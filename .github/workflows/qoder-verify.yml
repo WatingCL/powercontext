@@ -68,6 +68,10 @@ jobs:
           cp .env.example .env
           bash scripts/demo.sh
 
+      - name: 召回质量阈值（回归门禁）
+        working-directory: qoder
+        run: python scripts/eval_recall.py --check
+
       - name: 汇总到 Job Summary
         if: always()
         run: |

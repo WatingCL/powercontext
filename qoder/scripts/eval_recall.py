@@ -193,6 +193,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--db", default=str(ROOT / ".data" / "index.sqlite3"))
     parser.add_argument("--out", default=str(ROOT / "evidence" / "recall-eval.md"))
     parser.add_argument("--json", default=str(ROOT / "evidence" / "recall-eval.json"))
+    parser.add_argument("--check", action="store_true",
+                        help="阈值校验：命中@5 ≥ 0.95 且未命中率 ≤ 0.05，否则退出码 1（CI 用）")
     args = parser.parse_args(argv)
 
     if not Path(args.db).exists():
@@ -228,6 +230,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                        ("命中@5", "hit_at_5"), ("未命中率", "miss_rate"), ("MRR", "mrr")]:
         print(f"{label:<12}{off[key]:>10.3f}{on[key]:>10.3f}")
     print(f"已写出 {out}\n已写出 {args.json}")
+    if args.check:
+        ok = on["hit_at_5"] >= 0.95 and on["miss_rate"] <= 0.05
+        print(f"阈值校验（命中@5≥0.95 且 未命中率≤0.05）：{'通过' if ok else '未通过'}")
+        return 0 if ok else 1
     return 0
 
 

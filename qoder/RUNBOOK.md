@@ -158,6 +158,7 @@ litcontext search "维特比解码" --explain       # 命中 p-zeifman11，排�
 ```bash
 python scripts/eval_recall.py
 # 输出：命中@1/@3/@5、完全未命中率、MRR，逐条名次写进 evidence/recall-eval.md
+# CI 里用 --check：命中@5 ≥ 0.95 且未命中率 ≤ 0.05，不达标直接让流水线红掉
 ```
 
 > 当前基线：未命中率 18.8% → 0，命中@5 81% → 100%，MRR 0.573 → 0.700，
