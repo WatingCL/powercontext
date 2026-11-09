@@ -94,7 +94,7 @@ qoder/
 │   │   ├── parser.py         md / txt / pdf 解析与切块
 │   │   ├── text.py           中英混排分词
 │   │   └── web.py            本地 Web UI（标准库 http.server）
-│   └── tests/test_unit.py    18 个单元测试（不依赖 PowerContext）
+│   └── tests/test_unit.py    20 个单元测试（不依赖 PowerContext，两个 PDF 用例需 pypdf）
 ├── scripts/demo.sh           一键跑完整验证流程
 ├── scripts/eval_recall.py    检索召回评测（16 条标注查询，扩展前/后对比）
 ├── scripts/reset.sh          清空本地索引（不动 PowerContext 记忆）
@@ -151,4 +151,6 @@ MRR 从 0.573 升到 0.700；代价是 1 条查询从第 3 名降到第 4 名（
 - **Windows 注意**：PowerContext 的 Windows 支持标注为 experimental。
   另外 `.env` 里的 `POWERCONTEXT_SERVER_MCP_PATH` 在 Windows 上会触发
   "MCP path must be an absolute non-root path" 校验错误，本作品不使用 MCP，删掉该行即可（见 RUNBOOK）。
+- **PDF 只取文字层**：解析靠 `pypdf` 抽文字，扫描件（纯图片）抽不出内容，需要先 OCR；
+  中文 PDF 的抽取质量取决于字体是否嵌入。测试里有一个最小 PDF 用例覆盖这条路径。
 - 演示语料是为验证链路重写的样本，数值标注为"演示数值"，不能作为引用依据。

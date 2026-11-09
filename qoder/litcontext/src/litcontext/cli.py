@@ -85,8 +85,15 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         print("没有找到可导入的文件")
         return 1
     total = 0
+    skipped: List[str] = []
     for path in files:
-        info = index.import_file(path)
+        try:
+            info = index.import_file(path)
+        except (ValueError, RuntimeError) as error:
+            # 单篇失败不该带走整批：扫描版 PDF、损坏文件都很常见
+            print(f"[跳过] {path.name}：{error}")
+            skipped.append(path.name)
+            continue
         total += 1
         print(f"[导入] {info['paper_id']:<8} {info['title'][:48]:<48} {info['passages']:>3} 段")
         if not args.no_source:
@@ -103,8 +110,10 @@ def cmd_ingest(args: argparse.Namespace) -> int:
                 print(f"       （Source 未写入：{error}）")
     stats = index.stats()
     print(f"完成：新增/更新 {total} 篇，索引现有 {stats['papers']} 篇 {stats['passages']} 段")
+    if skipped:
+        print(f"跳过 {len(skipped)} 个文件：{'、'.join(skipped)}（原因见上，扫描件需先 OCR）")
     index.close()
-    return 0
+    return 0 if total else 1
 
 
 def cmd_search(args: argparse.Namespace) -> int:
@@ -253,9 +262,19 @@ def build_parser() -> argparse.ArgumentParser:
         description="NILM 科研文献助手：本地段落检索 + PowerContext 记忆",
     )
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--data-dir", help="数据目录（默认 qoder/.data）")
-    common.add_argument("--pc-url", help="PowerContext 地址（默认 http://127.0.0.1:8000）")
-    common.add_argument("--scope-key", help="scope 幂等键，同一研究方向用同一个")
+    # default=SUPPRESS：子命令没显式写这个参数时不要覆盖全局值，
+    # 否则 `litcontext --data-dir x ingest ...` 里的全局值会被子命令的 None 冲掉
+    common.add_argument("--data-dir", default=argparse.SUPPRESS,
+                        help="数据目录（默认 qoder/.data）")
+    common.add_argument("--pc-url", default=argparse.SUPPRESS,
+                        help="PowerContext 地址（默认 http://127.0.0.1:8000）")
+    common.add_argument("--scope-key", default=argparse.SUPPRESS,
+                        help="scope 幂等键，同一研究方向用同一个")
+
+    # 同时允许写在子命令前面，两种顺序都能用
+    parser.add_argument("--data-dir", help="数据目录（默认 qoder/.data）")
+    parser.add_argument("--pc-url", help="PowerContext 地址（默认 http://127.0.0.1:8000）")
+    parser.add_argument("--scope-key", help="scope 幂等键，同一研究方向用同一个")
 
     sub = parser.add_subparsers(dest="command", required=True)
 

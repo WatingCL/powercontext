@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import List
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -48,6 +50,71 @@ class ParserTest(unittest.TestCase):
     def test_unsupported_suffix(self) -> None:
         with self.assertRaises(ValueError):
             parse_file(Path("x.docx"))
+
+
+def make_minimal_pdf(path: Path, lines: List[str]) -> None:
+    """手写一个最小合法 PDF（Helvetica + WinAnsi），用于测试 PDF 解析分支。
+
+    不引 reportlab：这里只需要"能有文字层"的 PDF，不是排版。
+    """
+    content = "BT /F1 11 Tf 60 740 Td 16 TL\n" + "\n".join(
+        "(" + line.replace("(", r"\(").replace(")", r"\)") + ") Tj T*" for line in lines
+    ) + "\nET"
+    body = content.encode("latin-1")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length " + str(len(body)).encode() + b" >>\nstream\n" + body + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for number, obj in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n".encode() + obj + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n".encode() + b"0000000000 65535 f \n"
+    for offset in offsets:
+        out += f"{offset:010d} 00000 n \n".encode()
+    out += (f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref}\n%%EOF\n").encode()
+    path.write_bytes(bytes(out))
+
+
+class PdfTest(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("pypdf"), "需要 pypdf：pip install pypdf")
+    def test_pdf_import_and_search(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sample.pdf"
+            make_minimal_pdf(path, [
+                "Event Detection for Non-Intrusive Load Monitoring.",
+                "GLR maintains two sliding windows and computes a log-likelihood ratio.",
+                "A fixed threshold baseline needs per-house calibration.",
+            ])
+            paper = parse_file(path)
+            self.assertGreaterEqual(len(paper.passages), 1)
+            self.assertIn("GLR", " ".join(p.text for p in paper.passages))
+
+            index = Index(Path(tmp) / "t.sqlite3")
+            try:
+                index.import_file(path)
+                hits = index.search("log-likelihood ratio", top_k=1)
+                self.assertTrue(hits)
+                self.assertIn("likelihood", hits[0].text)
+            finally:
+                index.close()
+
+
+    @unittest.skipUnless(importlib.util.find_spec("pypdf"), "需要 pypdf：pip install pypdf")
+    def test_textless_pdf_is_rejected(self) -> None:
+        # 扫描件（只有图、没有文字层）必须明确报错，而不是静默写入空文档
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scan.pdf"
+            make_minimal_pdf(path, [])
+            with self.assertRaises(ValueError):
+                parse_file(path)
 
 
 class SynonymTest(unittest.TestCase):

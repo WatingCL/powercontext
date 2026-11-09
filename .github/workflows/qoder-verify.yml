@@ -57,6 +57,8 @@ jobs:
       - name: 安装 litcontext
         run: |
           pip install -e qoder/litcontext
+          # 可选依赖：PDF 解析。装上才能跑到 PDF 用例，否则该用例 skip
+          pip install pypdf
 
       - name: 单元测试（不依赖服务）
         working-directory: qoder/litcontext

@@ -269,8 +269,8 @@ $ litcontext serve --port 8765
 
 ```bash
 $ cd litcontext && python -m unittest discover -s tests
-..................
-Ran 18 tests in 0.308s
+....................
+Ran 20 tests in 0.500s
 OK
 ```
 

@@ -129,6 +129,9 @@ litcontext ingest ~/papers/nilm
 完成：新增/更新 5 篇，索引现有 5 篇 24 段
 ```
 
+> PDF 需要 `pip install pypdf`，且只能抽文字层：扫描件要先 OCR，中文 PDF 取决于字体是否嵌入。
+> 抽不出文字的 PDF 会报"没有解析出任何正文段落"，不会静默进一个空文档。
+
 ---
 
 ## 4. 检索
