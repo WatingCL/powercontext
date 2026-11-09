@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sddcontext"
+version = "0.1.0"
+description = "SDD context module: specs/code/tests retrieval + task state for AI coding assistants"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+mysql = ["PyMySQL>=1.1"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+sdd = "sddcontext.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

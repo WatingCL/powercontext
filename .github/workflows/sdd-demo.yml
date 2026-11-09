@@ -1,0 +1,183 @@
+name: sdd-demo
+
+# End-to-end verification of the SDD context module on a clean Linux runner:
+# seekdb (embedded) storage + PowerContext task state + MiniMax implementation.
+#
+# Required repository secret (Settings > Secrets and variables > Actions):
+#   MINIMAX_API_KEY - MiniMax platform API key (https://platform.minimaxi.com)
+# Optional secret:
+#   MINIMAX_MODEL   - model name, defaults to MiniMax-M2
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "minimax/**"
+      - ".github/workflows/sdd-demo.yml"
+  workflow_dispatch:
+
+env:
+  SDD_PROJECT_DIR: minimax/project
+  SDD_STORE_BACKEND: seekdb
+  SDD_SEEKDB_PATH: .sdd/seekdb
+  POWERCONTEXT_URL: http://127.0.0.1:8000
+  MINIMAX_BASE_URL: https://api.minimaxi.com/v1
+  MINIMAX_MODEL: ${{ secrets.MINIMAX_MODEL || 'MiniMax-M2' }}
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+        working-directory: minimax
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyseekdb "powercontext[cli,server]"
+          # sanity: embedded seekdb engine importable
+          python - <<'EOF'
+          import pylibseekdb
+          print("pylibseekdb OK:", [n for n in dir(pylibseekdb) if not n.startswith('_')])
+          EOF
+
+      - name: Unit tests (sddcontext)
+        run: |
+          cd sddcontext && python -m pytest tests/ -v
+          cd ..
+
+      - name: Start PowerContext server
+        run: |
+          powercontext server run > powercontext.log 2>&1 &
+          echo $! > powercontext.pid
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/health/live > /dev/null; then
+              echo "PowerContext server is healthy"; exit 0
+            fi
+            sleep 2
+          done
+          echo "PowerContext server failed to start"; cat powercontext.log; exit 1
+
+      - name: Module health check
+        run: python -m sddcontext check
+        env:
+          PYTHONPATH: sddcontext/src
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+
+      - name: Import project material into seekdb
+        run: python -m sddcontext import
+        env:
+          PYTHONPATH: sddcontext/src
+
+      - name: Pre-change tests (target tests must FAIL, regression must PASS)
+        run: |
+          set +e
+          python -m sddcontext verify --label pre
+          code=$?
+          set -e
+          # exit code 1 (tests failed) is EXPECTED here; anything else is an error
+          if [ "$code" -ne 1 ]; then
+            echo "::error::pre-change test run exited with $code, expected 1 (test failures)"
+            exit 1
+          fi
+          grep -E "passed|failed" "$(ls -t evidence/logs/pre-*.log | head -1)" | tail -3
+        env:
+          PYTHONPATH: sddcontext/src
+
+      - name: Build development context
+        run: |
+          python -m sddcontext context \
+            --task project/tasks/001-add-status-filter.md \
+            --out md --save .sdd/context-001-pre.json | tee evidence/logs/context-001-pre.md
+        env:
+          PYTHONPATH: sddcontext/src
+
+      - name: Implement with MiniMax
+        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        run: python -m sddcontext implement --task project/tasks/001-add-status-filter.md
+        env:
+          PYTHONPATH: sddcontext/src
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+
+      - name: Skip notice when no MiniMax key configured
+        if: ${{ secrets.MINIMAX_API_KEY == '' }}
+        run: |
+          echo "::warning::MINIMAX_API_KEY secret not configured - implement step skipped."
+          echo "Add the repository secret MINIMAX_API_KEY to run the full flow."
+
+      - name: Post-change tests (all must PASS)
+        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        run: python -m sddcontext verify --label post
+        env:
+          PYTHONPATH: sddcontext/src
+
+      - name: Save task state to PowerContext
+        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        run: |
+          python -m sddcontext state save --task project/tasks/001-add-status-filter.md --json '{
+            "title": "为任务列表增加状态筛选",
+            "done": ["导入规格/代码/测试到 seekdb", "构建开发上下文", "MiniMax 完成代码修改", "功能与回归测试全部通过"],
+            "todo": ["更新运行文档中的验证样例章节"],
+            "verification": {"pre": "目标测试 5 failed / 回归 9 passed", "post": "全部 14 passed"},
+            "changed_files": ["project/src/todoapp/service.py"]
+          }'
+        env:
+          PYTHONPATH: sddcontext/src
+
+      - name: Restart PowerContext server and recall state
+        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        run: |
+          kill "$(cat powercontext.pid)" || true
+          sleep 3
+          powercontext server run >> powercontext.log 2>&1 &
+          echo $! > powercontext.pid
+          for i in $(seq 1 60); do
+            curl --fail --silent http://127.0.0.1:8000/health/live > /dev/null && break
+            sleep 2
+          done
+          echo "--- state after restart ---"
+          python -m sddcontext state show --task project/tasks/001-add-status-filter.md
+          echo "--- context includes recalled state ---"
+          python -m sddcontext context --task project/tasks/001-add-status-filter.md \
+            --out md --save .sdd/context-001-post.json | tee evidence/logs/context-001-post.md
+          grep -q "MiniMax 完成代码修改" evidence/logs/context-001-post.md
+        env:
+          PYTHONPATH: sddcontext/src
+
+      - name: Spec update propagation check
+        run: |
+          sed -i 's/仅返回状态为 `todo` 的任务/仅返回状态为 `todo` 的任务【修订验证标记】/' \
+            project/specs/SPEC-002-filtering.md
+          python -m sddcontext import
+          python -m sddcontext context --task project/tasks/001-add-status-filter.md \
+            --out md | tee evidence/logs/context-001-spec-updated.md
+          grep -q "修订验证标记" evidence/logs/context-001-spec-updated.md
+          git checkout -- project/specs/SPEC-002-filtering.md
+        env:
+          PYTHONPATH: sddcontext/src
+
+      - name: Git diff of the MiniMax change
+        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        run: |
+          git diff --stat
+          git diff > evidence/logs/minimax-change.diff
+          mkdir -p evidence/diff
+          cp evidence/logs/minimax-change.diff evidence/diff/001-add-status-filter.diff
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdd-evidence-${{ github.run_id }}
+          path: |
+            minimax/evidence/**
+            minimax/powercontext.log
+          if-no-files-found: warn

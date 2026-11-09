@@ -1,0 +1,13 @@
+# module runtime state
+.sdd/
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+# local env with real credentials
+.env
+# business project data files created during demo runs
+project/*.json

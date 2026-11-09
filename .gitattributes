@@ -1,0 +1,11 @@
+# Normalise text files to LF in the repository (CI runs on Linux).
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.example text eol=lf
+*.gitkeep text
