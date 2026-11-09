@@ -78,6 +78,7 @@ qoder/
 ├── RUNBOOK.md                运行说明：从装 PowerContext 到跑通验证样例
 ├── VERIFY-SAMPLE.md          验证样例：初始数据、操作步骤、预期结果
 ├── USAGE-RECORDS.md          真实使用记录（含数据来源与空白说明）
+├── SUBMISSION.md             提交对照表：赛题要求 → 交付物位置，含提交前待办
 ├── docs/QODER-SESSION.md     Qoder 开发记录的录屏脚本（五个会话的逐字提问）
 ├── .env.example              配置样例（不含任何真实凭据）
 ├── data/samples/             5 篇演示语料（重写样本，见其中 README）
