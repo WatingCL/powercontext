@@ -35,12 +35,12 @@ bash scripts/demo.sh             # 终端 B：会新写一份 logs/demo-*.log �
 
 **运行记录**：[Actions 工作流页面](https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml)
 按分支头倒序列出每一次运行，点开任意一次都能看到每条命令与其输出。
-截至本版本，分支 `2026-competition-ecosystem` 连续三次推送（`6c201d5` / `2d230faa` / `016c792c`）
-均为 success：10 个业务步骤全过，单次约 50 秒，Artifacts `qoder-evidence` 约 483 KB。
+故障恢复之后，分支 `2026-competition-ecosystem` 的每次推送（`6c201d5` 起）均为 success：
+10 个业务步骤全过，单次约 50 秒，Artifacts `qoder-evidence` 约 483 KB。
 
 > 一段需要说明的插曲：2026-11-09 18:10Z—18:28Z 期间 GitHub Actions 发生平台级故障
 > （状态页标记 major outage），那三次运行为 **0 job 直接失败**——job 根本没被创建，
-> 与本项目代码无关。故障恢复后同一套代码重新运行即为上面两次全绿；
+> 与本项目代码无关。故障恢复后同一套代码立即全绿；
 > 故障前的四次运行（`b458926` / `f35a364` / `466cbaf` / `4692ede`）同样都是 success。
 
 ## 怎么核对"记忆不在本地"
