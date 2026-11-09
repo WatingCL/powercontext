@@ -34,7 +34,8 @@ bash scripts/demo.sh             # 终端 B：会新写一份 logs/demo-*.log �
 - 产物：整个 `evidence/` 与 `out/`，可直接下载核对，含日志与召回评测 JSON
 
 > 说明：2026-11-09 18:10Z 起 GitHub Actions 出现平台级故障（状态页标记 major outage），
-> 期间两次推送的运行在创建 job 前即失败，与本项目代码无关；此前三次运行均为 success。
+> 期间推送的运行在创建 job 前即失败，与本项目代码无关；故障发生前的四次运行均为 success。
+> 故障恢复后在 Actions 页面点一次 **Re-run all jobs** 即可得到最新一次绿灯。
 
 ## 怎么核对"记忆不在本地"
 
