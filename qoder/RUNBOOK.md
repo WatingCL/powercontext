@@ -138,6 +138,31 @@ litcontext search "广义似然比 事件检测 误报" --top 3
 litcontext search "阈值 跨户" --year-from 2018 --top 5
 ```
 
+### 4.1 同义扩展：为什么"虚警"也能搜到"误报"
+
+检索是 BM25 字面匹配，但查询侧加了一层 NILM 领域词表（`synonyms.py`）：
+命中"虚警/门限/维特比"这类说法时，会把同组的"误报/阈值/Viterbi"以 0.4 的权重
+一并加进查询。索引里始终存原文，重建索引不会改变检索口径。
+
+```bash
+# 看它到底扩了什么（评审可逐条核对，不是黑箱）
+litcontext search "门限设多少才不虚警" --explain
+
+# 关掉扩展，对比一下字面检索会漏什么
+litcontext search "维特比解码" --no-expand     # 无结果
+litcontext search "维特比解码" --explain       # 命中 p-zeifman11，排第一
+```
+
+改了词表或调了权重之后，用固定评测集回测（脚本自带 16 条标注查询，不读外部文件）：
+
+```bash
+python scripts/eval_recall.py
+# 输出：命中@1/@3/@5、完全未命中率、MRR，逐条名次写进 evidence/recall-eval.md
+```
+
+> 当前基线：未命中率 18.8% → 0，命中@5 81% → 100%，MRR 0.573 → 0.700，
+> 代价是 1 条查询名次下降（deep learning 第 3 → 第 4）。
+
 ---
 
 ## 5. 写入研究记忆（本作品的核心）
@@ -218,4 +243,5 @@ bash scripts/reset.sh     # 清空本地索引（不动 PowerContext 记忆）
 | `powercontext: command not found` | 没激活虚拟环境，或没装 `[cli,server]` 附加依赖 |
 | 导入 PDF 报 `需要 pypdf` | `pip install pypdf`（PDF 解析是可选的） |
 | Windows 上服务启动即退出 | 见 §1.1：删掉 `.env` 里的 `POWERCONTEXT_SERVER_MCP_*` 两行；另建议用 PowerShell / CMD 而不是 Git Bash 启动 |
-| 中文检索命中少 | 中文按二元组切分，查询尽量用论文里的实词（如"暂态 阶跃 事件"） |
+| 中文检索命中少 | 先用 `--explain` 看查询被切/扩成什么；领域词表覆盖不到的说法，在 `synonyms.py` 里加一组即可，然后用 `scripts/eval_recall.py` 回测有没有把别的查询带坏 |
+| 想确认换台机器也能跑 | 看 GitHub Actions 的 `qoder-litcontext-verify`：干净 Ubuntu 上装 PowerContext、起服务、跑完整流程与召回评测，产物在 Artifacts |

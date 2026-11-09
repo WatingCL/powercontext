@@ -36,6 +36,8 @@
    正文按章节切块写入索引，同时把摘要片段写进 PowerContext 的 Source journal 作为证据。
 2. **检索原文**：`litcontext search "广义似然比 事件检测 误报"`，中英混排分词 + BM25，
    支持年份区间与"方法/数据集"字段过滤，结果带 `[paper_id §章节]` 出处。
+   查询侧带一层 **NILM 领域同义扩展**（"虚警"→"误报"、"维特比"→"Viterbi"），
+   `--explain` 可逐条查看扩了哪些词，`--no-expand` 可关掉做对比。
 3. **写下判断**：三条命令分别记录——
    - `note --kind finding` 读到的结论（带 `--paper`、`--evidence`）
    - `note --kind decision --verdict reject` 否掉的路线**和理由**
@@ -74,6 +76,7 @@ qoder/
 ├── RUNBOOK.md                运行说明：从装 PowerContext 到跑通验证样例
 ├── VERIFY-SAMPLE.md          验证样例：初始数据、操作步骤、预期结果
 ├── USAGE-RECORDS.md          真实使用记录（含数据来源与空白说明）
+├── docs/QODER-SESSION.md     Qoder 开发记录的录屏脚本（五个会话的逐字提问）
 ├── .env.example              配置样例（不含任何真实凭据）
 ├── data/samples/             5 篇演示语料（重写样本，见其中 README）
 ├── litcontext/               核心模块
@@ -84,14 +87,16 @@ qoder/
 │   │   ├── memory.py         记忆读写与解析（LITCORE|{...} 单行 JSON）
 │   │   ├── builder.py        有界上下文装配（resume）
 │   │   ├── report.py         综述初稿与方法对比表
-│   │   ├── index.py          SQLite 索引 + BM25
+│   │   ├── index.py          SQLite 索引 + BM25（支持同义扩展开关）
+│   │   ├── synonyms.py       NILM 领域同义词表与查询扩展
 │   │   ├── parser.py         md / txt / pdf 解析与切块
 │   │   ├── text.py           中英混排分词
 │   │   └── web.py            本地 Web UI（标准库 http.server）
-│   └── tests/test_unit.py    12 个单元测试（不依赖 PowerContext）
+│   └── tests/test_unit.py    18 个单元测试（不依赖 PowerContext）
 ├── scripts/demo.sh           一键跑完整验证流程
+├── scripts/eval_recall.py    检索召回评测（16 条标注查询，扩展前/后对比）
 ├── scripts/reset.sh          清空本地索引（不动 PowerContext 记忆）
-└── evidence/                 运行日志、出稿快照、UI 截图
+└── evidence/                 运行日志、出稿快照、UI 截图、召回评测结果
 ```
 
 ---
@@ -122,15 +127,22 @@ litcontext serve --port 8765
 ## 六、验证样例（摘要）
 
 5 篇演示语料 → 5 篇 / 24 段入索引 → 写 11 条记忆（3 结论 / 3 取舍 / 1 约束 / 1 进度 / 3 对比）
-→ `resume` 召回 `ready`（3592 / 4000 字节）→ 生成 1869 字符综述初稿（引用 6 段原文）
+→ `resume` 召回 `ready`（3592 / 4000 字节）→ 生成 1891 字符综述初稿（引用 6 段原文）
 与 3 行方法对比表。逐条命令与预期输出见 [VERIFY-SAMPLE.md](VERIFY-SAMPLE.md)。
+
+另有一项可复现的量化：`python scripts/eval_recall.py` 用 16 条标注查询对比
+"关闭 / 开启同义扩展"——命中@5 从 81% 提升到 100%，完全未命中率从 19% 降到 0，
+MRR 从 0.573 升到 0.700；代价是 1 条查询从第 3 名降到第 4 名（仍在 top-5 内）。
+逐条结果与失败案例分析见 [evidence/recall-eval.md](evidence/recall-eval.md)。
 
 ---
 
 ## 七、已知限制
 
-- **检索是词面匹配**：中文按二元组切、英文按词切，没有语义向量。
-  同义改写（"投切" vs "投切事件"）可能漏召回；这是为了"零依赖可复现"做的取舍。
+- **检索以词面匹配为主**：中文按二元组切、英文按词切，没有语义向量。
+  同义改写靠 `synonyms.py` 的领域词表兜底（实测 16 条标注查询命中@5 从 81%→100%），
+  但换句式的语义改写（"小跃变为什么难检" vs "检测小的功率变化"）仍可能漏召回——
+  领域词表只能覆盖术语级同义，覆盖不了句式级改写。这是为了"零依赖可复现"做的取舍。
 - **PowerContext 的检索是"全部词命中"语义**：长句查询容易空召回，
   因此本模块统一用前缀 `LITCORE` 作为召回键，再在本地按类型/主题筛选。
 - **记忆容量**：单次召回最多取服务端允许的 50 条；超过后建议按课题拆分 scope。

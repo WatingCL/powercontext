@@ -6,7 +6,7 @@
 - 初始数据：`data/samples/` 下 5 篇演示语料（重写样本，见该目录 README）
 - 一键执行：`bash scripts/demo.sh`（日志自动落 `evidence/logs/`）
 
-> 下面所有输出都是**真实执行结果**，对应日志 `evidence/logs/demo-20261110-013548.log`。
+> 下面所有输出都是**真实执行结果**，对应日志 `evidence/logs/demo-20261110-014711.log`。
 
 ---
 
@@ -17,7 +17,7 @@ $ litcontext doctor
 数据目录       ...\qoder\.data
 本地索引       0 篇 / 0 段（SQLite）
 PowerContext   http://127.0.0.1:8000 -> 可用
-scope          scp_6b38kwtshr9g4k2h7ycfh2yy8g（litcontext-nilm-event-detection）
+scope          scp_5jzgwts2bgf6gjxzkhmz8d3mzq（litcontext-nilm-event-detection）
 记忆条数       0
 ```
 
@@ -48,16 +48,16 @@ $ litcontext ingest data/samples
 ```bash
 $ litcontext search "广义似然比 事件检测 误报" --top 3
 1. [p-anderson12] 2012 Event Detection for Non-Intrusive Load Monitoring
-   §摘要  score=13.83
+   §摘要  score=17.06
    本文把事件检测从"阈值比较"提升为"统计检验"：把功率序列的变化看作均值跃变，
    用广义似然比（GLR）与累积和（CUSUM）检测跃变点，再对候选事件做分类。……
 
 2. [p-anderson12] 2012 Event Detection for Non-Intrusive Load Monitoring
-   §方法  score=6.64
+   §方法  score=8.38
    GLR 维护两段滑动窗口（跃变前/后），对每一点计算两段均值差的对数似然比……
 
 3. [p-blued12] 2012 BLUED - A Fully Labeled Public Dataset ...
-   §结果  score=4.66
+   §结果  score=5.73
    演示数值：以功率阶跃阈值做基线事件检测，事件级 F1 约 0.75……
 ```
 
@@ -66,7 +66,49 @@ $ litcontext search "广义似然比 事件检测 误报" --top 3
 
 ---
 
-## 3. 写下研究判断：11 条记忆进 PowerContext
+## 3. 检索召回评测：同义扩展救了哪些漏召回
+
+同一套语料，16 条标注查询（提问用的是研究者的口语，标注是"哪篇真正回答了它"）：
+
+```bash
+$ python scripts/eval_recall.py
+语料 5 篇 / 24 段；16 条查询
+指标                关闭扩展      开启扩展
+命中@1             0.375     0.500
+命中@3             0.812     0.812
+命中@5             0.812     1.000
+未命中率             0.188     0.000
+MRR              0.573     0.700
+已写出 evidence/recall-eval.md
+已写出 evidence/recall-eval.json
+```
+
+单个例子（`--no-expand` 与默认行为对比）：
+
+```bash
+$ litcontext search "维特比解码" --no-expand
+没有命中。试试更短的关键词，或先 `litcontext ingest` 导入文献。
+
+$ litcontext search "维特比解码" --explain
+查询词 4 个；同义扩展 8 个（权重 0.4）
+  原始：比解 特比 维特 解码
+  扩展：hmm viterbi 可夫 尔可 状态 隐状 隐马 马尔
+  特比 -> hmm 隐马 马尔 尔可 可夫 隐状 状态 viterbi
+  维特 -> hmm 隐马 马尔 尔可 可夫 隐状 状态 viterbi
+
+1. [p-zeifman11] 2011 Disaggregation of Home Energy Display Data ...  score=7.68
+   §摘要  把负荷分解写成隐马尔可夫模型（HMM）的推断问题……用 Viterbi 求最可能的状态序列。
+```
+
+**关键验证点**：语料里只有 `Viterbi`，没有"维特比"三个字，字面检索必然为零；
+扩展后不仅命中，还排第一。扩展词逐个可见（`--explain`），不是黑箱。
+
+**代价也如实记**：16 条里有 1 条名次下降（"deep learning 在 NILM 上" 第 3 → 第 4），
+因为扩展词稀释了原词权重。完整逐条结果见 `evidence/recall-eval.md`。
+
+---
+
+## 4. 写下研究判断：11 条记忆进 PowerContext
 
 ```bash
 $ litcontext note --kind finding --paper p-anderson12 --topic 事件检测 \
@@ -105,7 +147,7 @@ $ litcontext doctor
 
 ---
 
-## 4. 召回：换一个进程，上下文仍在
+## 5. 召回：换一个进程，上下文仍在
 
 ```bash
 $ litcontext resume
@@ -147,11 +189,11 @@ PowerContext 调用：
 
 ---
 
-## 5. 出稿：初稿与对比表
+## 6. 出稿：初稿与对比表
 
 ```bash
 $ litcontext brief --topic 事件检测 -o out/brief.md
-已写出 out/brief.md（1869 字符，引用 6 段原文）
+已写出 out/brief.md（1891 字符，引用 6 段原文）
 
 $ litcontext compare -o out/compare.md
 已写出 out/compare.md（3 条对比记忆）
@@ -205,7 +247,7 @@ $ litcontext compare -o out/compare.md
 
 ---
 
-## 6. Web UI（可选）
+## 7. Web UI（可选）
 
 ```bash
 $ litcontext serve --port 8765
@@ -223,12 +265,12 @@ $ litcontext serve --port 8765
 
 ---
 
-## 7. 单元测试（不依赖 PowerContext）
+## 8. 单元测试（不依赖 PowerContext）
 
 ```bash
 $ cd litcontext && python -m unittest discover -s tests
-............
-Ran 12 tests in 0.219s
+..................
+Ran 18 tests in 0.308s
 OK
 ```
 
@@ -245,3 +287,5 @@ OK
 | 5 | 召回有界 | `PreparedContext` 状态 ready，3592/4000 字节 | ✅ |
 | 6 | 出稿引用可追溯 | 初稿每条论断带 `[paper_id]`，共 6 段原文 | ✅ |
 | 7 | 服务重启后记忆仍在 | 重启 `powercontext server run` 后 `resume` 输出不变 | ✅ |
+| 8 | 同义扩展救回字面漏召回 | `search 维特比解码 --no-expand` 空 / 默认命中 `p-zeifman11` | ✅ 16 条查询未命中率 19% → 0 |
+| 9 | 干净环境可从零复现 | GitHub Actions `qoder-litcontext-verify` 全绿 | ✅ 见仓库 Actions |
