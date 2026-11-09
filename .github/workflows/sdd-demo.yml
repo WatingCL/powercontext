@@ -17,7 +17,9 @@ on:
   workflow_dispatch:
 
 env:
-  SDD_PROJECT_DIR: minimax/project
+  # All steps run with working-directory: minimax, so paths are relative to
+  # the minimax/ directory (same convention as scripts/run_demo.sh).
+  SDD_PROJECT_DIR: project
   SDD_STORE_BACKEND: seekdb
   SDD_SEEKDB_PATH: .sdd/seekdb
   POWERCONTEXT_URL: http://127.0.0.1:8000

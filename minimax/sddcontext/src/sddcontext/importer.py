@@ -330,6 +330,15 @@ def parse_task_file(path: Path) -> TaskInfo:
 
 def import_project(cfg: Config, store: BaseStore) -> Dict[str, int]:
     """(Re)import all project material into the store. Returns row counts."""
+    if not cfg.project_dir.is_dir():
+        raise FileNotFoundError(
+            f"project directory not found: {cfg.project_dir} "
+            f"(cwd={Path.cwd()}; set SDD_PROJECT_DIR if you run from elsewhere)"
+        )
+    for required in (cfg.specs_dir, cfg.src_dir, cfg.tests_dir):
+        if not required.is_dir():
+            raise FileNotFoundError(f"expected directory missing: {required}")
+
     store.init_schema()
 
     spec_rows: List[Dict[str, Any]] = []
@@ -342,6 +351,12 @@ def import_project(cfg: Config, store: BaseStore) -> Dict[str, int]:
 
     test_rows = [t.to_row() for t in parse_test_cases(cfg.tests_dir, cfg.project_dir)]
     store.replace_rows(TEST_TABLE, test_rows)
+
+    total = len(spec_rows) + len(symbol_rows) + len(test_rows)
+    if total == 0:
+        raise RuntimeError(
+            "import found no material at all - refusing to wipe the store silently"
+        )
 
     return {
         "spec_items": len(spec_rows),

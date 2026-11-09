@@ -8,6 +8,7 @@ before/after behaviour required by the task statement is auditable.
 from __future__ import annotations
 
 import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,12 +45,12 @@ def _git_commit(project_dir: Path) -> str:
 
 
 def run_tests(cfg: Config, label: str, extra_args: Optional[List[str]] = None) -> VerifyResult:
-    args = ["-m", "pytest", "tests/", "-v"]
+    argv = [sys.executable, "-m", "pytest", "tests/", "-v"]
     if extra_args:
-        args.extend(extra_args)
-    command = "python " + " ".join(args)
+        argv.extend(extra_args)
+    command = " ".join(argv)
     proc = subprocess.run(
-        ["python", *args[1:]],
+        argv,
         cwd=str(cfg.project_dir),
         capture_output=True,
         text=True,
