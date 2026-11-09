@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# 一键跑通验证样例：导入 -> 检索 -> 记忆 -> 召回 -> 出稿
+# 一键跑通验证样例：导入 -> 检索 -> 召回评测 -> 记忆 -> 召回 -> 出稿
 # 用法：bash scripts/demo.sh            （litcontext 已在 PATH 中）
-#      LITCONTEXT=/path/to/litcontext bash scripts/demo.sh
+#      LITCONTEXT=/path/to/litcontext PYTHON=/path/to/python bash scripts/demo.sh
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -27,6 +27,10 @@ step() {
   echo "---- 检索：同一问题在 5 篇文献里的命中 ----"
   step "$LC" search "广义似然比 事件检测 误报" --top 3
   step "$LC" search "阈值 跨户 标定" --top 3
+
+  echo
+  echo "---- 检索召回评测：关闭 / 开启同义扩展 ----"
+  step "${PYTHON:-python}" scripts/eval_recall.py
 
   echo
   echo "---- 写入研究判断（PowerContext Memory）----"

@@ -99,14 +99,19 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"hits": []})
             return
         year_from = query.get("year_from", [""])[0]
+        expand = (query.get("expand") or ["1"])[0] not in {"0", "false", "no"}
         hits = self.index.search(
             q,
             top_k=int(query.get("top", ["6"])[0]),
             year_from=int(year_from) if year_from.isdigit() else None,
             method=(query.get("method") or [None])[0] or None,
+            expand=expand,
         )
+        weights = self.index.query_weights(q, expand=expand)
         self._json({"query": q, "hits": [h.as_dict() for h in hits],
-                    "backend": "local-sqlite-bm25"})
+                    "backend": "local-sqlite-bm25",
+                    "expand": expand,
+                    "terms": len(weights)})
 
     def _note(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         kind = payload.get("kind", "finding")

@@ -174,7 +174,8 @@
       <div class="step">
         <div>
           <h3>检索原文</h3>
-          <p>中英混排分词 + BM25，支持年份区间与"方法/数据集"字段过滤，命中段落带 <code>[paper_id §章节]</code> 出处。</p>
+          <p>中英混排分词 + BM25，支持年份区间与"方法/数据集"字段过滤，命中段落带 <code>[paper_id §章节]</code> 出处。
+             查询侧带 NILM 领域同义扩展（"虚警"→"误报"、"维特比"→"Viterbi"），<code>--explain</code> 可核对扩了哪些词。</p>
         </div>
       </div>
       <div class="step">
@@ -274,6 +275,24 @@
       <div class="metric"><div class="n">3592<span style="font-size:15px"> /4000 B</span></div><div class="l">有界上下文占用</div></div>
       <div class="metric"><div class="n">6</div><div class="l">初稿引用的原文段落</div></div>
     </div>
+
+    <h3 style="margin-top:30px;font-size:17px">检索质量：同义扩展前后（16 条标注查询）</h3>
+    <table style="margin-top:12px">
+      <thead>
+        <tr><th>指标</th><th style="width:170px">关闭同义扩展</th><th style="width:170px">开启同义扩展</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>命中@1</td><td>38%</td><td>50%</td></tr>
+        <tr><td>命中@5</td><td>81%</td><td><b>100%</b></td></tr>
+        <tr><td>完全未命中率</td><td>19%</td><td><b>0</b></td></tr>
+        <tr><td>MRR</td><td>0.573</td><td>0.700</td></tr>
+      </tbody>
+    </table>
+    <p class="sub" style="margin-top:12px">
+      复现：<code>python scripts/eval_recall.py</code>。语料里写 <code>Viterbi</code>，
+      用"维特比"提问时字面检索为零，扩展后排第一；扩展词可用 <code>--explain</code> 逐条核对。
+      代价照实写：1 条查询（deep learning）从第 3 名降到第 4 名。
+    </p>
 
     <div style="margin-top:26px">
 <pre><span class="c">$ litcontext resume   # 服务重启后执行，内容不变</span>

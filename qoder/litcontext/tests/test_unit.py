@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from litcontext import memory, report  # noqa: E402
+from litcontext import memory, report, synonyms  # noqa: E402
 from litcontext.index import Index  # noqa: E402
 from litcontext.parser import parse_file  # noqa: E402
 from litcontext.text import highlight_snippet, tokenize  # noqa: E402
@@ -48,6 +48,29 @@ class ParserTest(unittest.TestCase):
     def test_unsupported_suffix(self) -> None:
         with self.assertRaises(ValueError):
             parse_file(Path("x.docx"))
+
+
+class SynonymTest(unittest.TestCase):
+    def test_cross_language_expansion(self) -> None:
+        weights = synonyms.expand(["false", "alarm"])
+        self.assertIn("误报", weights)
+        self.assertEqual(weights["false"], 1.0)
+        self.assertLess(weights["误报"], 1.0)  # 扩展词权重必须低于原词
+
+    def test_multi_char_surface_is_tokenized(self) -> None:
+        # "广义似然比" 必须拆成中文二元组，否则和索引里的 token 对不上
+        weights = synonyms.expand(["glr"])
+        self.assertIn("广义", weights)
+        self.assertIn("似然", weights)
+
+    def test_expansion_is_capped(self) -> None:
+        weights = synonyms.expand(["事件"])
+        self.assertLessEqual(len(weights), 1 + synonyms.MAX_PER_TOKEN)
+
+    def test_explain_lists_source(self) -> None:
+        # 查询词会被切成中文二元组（维特/特比），explain 以 token 为键
+        rows = synonyms.explain(["维特比"])
+        self.assertTrue(any("viterbi" in extra for _, extra in rows))
 
 
 class IndexTest(unittest.TestCase):
@@ -88,6 +111,17 @@ class IndexTest(unittest.TestCase):
         before = self.index.stats()["passages"]
         self.index.import_file(SAMPLES / "03-anderson-2012-glr.md")
         self.assertEqual(self.index.stats()["passages"], before)
+
+    def test_expansion_recovers_literal_miss(self) -> None:
+        # 语料里只有 Viterbi，没有"维特比"；字面检索必然搜不到，扩展后应该能命中
+        plain = [h.paper_id for h in self.index.search("维特比解码", top_k=5, expand=False)]
+        expanded = [h.paper_id for h in self.index.search("维特比解码", top_k=5, expand=True)]
+        self.assertNotIn("p-zeifman11", plain)
+        self.assertIn("p-zeifman11", expanded)
+
+    def test_expansion_can_be_disabled(self) -> None:
+        self.assertEqual(set(self.index.query_weights("虚警", expand=False)), {"虚警"})
+        self.assertIn("误报", self.index.query_weights("虚警", expand=True))
 
 
 class MemoryParseTest(unittest.TestCase):

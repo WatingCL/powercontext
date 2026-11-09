@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
 from .parser import Paper, parse_file
+from .synonyms import expand as expand_query
 from .text import tokenize
 
 SCHEMA = """
@@ -164,9 +165,15 @@ class Index:
         year_to: Optional[int] = None,
         method: Optional[str] = None,
         dataset: Optional[str] = None,
+        expand: bool = True,
     ) -> List[Hit]:
         with self._lock:
-            return self._search(query, top_k, year_from, year_to, method, dataset)
+            return self._search(query, top_k, year_from, year_to, method, dataset, expand)
+
+    def query_weights(self, query: str, expand: bool = True) -> Dict[str, float]:
+        """查询会被展开成哪些 term、各自权重多少（供 `--explain` 与评测使用）。"""
+        terms = list(dict.fromkeys(tokenize(query)))
+        return expand_query(terms) if expand else {term: 1.0 for term in terms}
 
     def _search(
         self,
@@ -176,6 +183,7 @@ class Index:
         year_to: Optional[int] = None,
         method: Optional[str] = None,
         dataset: Optional[str] = None,
+        expand: bool = True,
     ) -> List[Hit]:
         terms = tokenize(query)
         if not terms:
@@ -207,17 +215,20 @@ class Index:
         avg_len = sum(sum(c.values()) for c in docs_tokens) / max(1, n_docs)
         k1, b = 1.5, 0.75
 
+        # 查询侧同义扩展：原词权重 1.0，领域词表扩出来的说法权重 0.4。
+        # 展开只在查询侧做，索引里始终存原文 token，重建索引不会改变检索口径。
         query_terms = list(dict.fromkeys(terms))
+        weights = expand_query(query_terms) if expand else {term: 1.0 for term in query_terms}
         scored: List[Hit] = []
         for row, counter in zip(rows, docs_tokens):
             length = sum(counter.values()) or 1
             score = 0.0
-            for term in query_terms:
+            for term, weight in weights.items():
                 tf = counter.get(term, 0)
                 if not tf:
                     continue
                 idf = math.log(1 + (n_docs - doc_freq[term] + 0.5) / (doc_freq[term] + 0.5))
-                score += idf * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * length / avg_len))
+                score += weight * idf * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * length / avg_len))
             if score > 0:
                 scored.append(
                     Hit(

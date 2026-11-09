@@ -1,0 +1,447 @@
+{
+  "generated_at": "2026-11-10T01:47:13",
+  "corpus": {
+    "papers": 5,
+    "passages": 24,
+    "year_min": 1992,
+    "year_max": 2020
+  },
+  "without_synonyms": {
+    "expand": false,
+    "queries": 16,
+    "hit_at_1": 0.375,
+    "hit_at_3": 0.8125,
+    "hit_at_5": 0.8125,
+    "miss_rate": 0.1875,
+    "mrr": 0.5729166666666666,
+    "rows": [
+      {
+        "query": "投切那一刻怎么捕捉",
+        "intent": "事件检测的基本动作",
+        "expect": [
+          "p-anderson12",
+          "p-hart92"
+        ],
+        "rank": 3,
+        "top3": [
+          "p-blued12",
+          "p-review20",
+          "p-hart92"
+        ]
+      },
+      {
+        "query": "门限设多少才不虚警",
+        "intent": "阈值与虚警（虚警=误报，考同义词）",
+        "expect": [
+          "p-anderson12",
+          "p-review20"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-anderson12"
+        ]
+      },
+      {
+        "query": "false alarm 太多怎么办",
+        "intent": "英文提问命中中文正文（误报）",
+        "expect": [
+          "p-anderson12",
+          "p-zeifman11"
+        ],
+        "rank": null,
+        "top3": []
+      },
+      {
+        "query": "隐状态序列怎么推",
+        "intent": "HMM 推断（隐状态只在该文出现）",
+        "expect": [
+          "p-zeifman11"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-zeifman11",
+          "p-hart92",
+          "p-anderson12"
+        ]
+      },
+      {
+        "query": "有没有事件级标注的公开数据集",
+        "intent": "数据集与标注粒度",
+        "expect": [
+          "p-blued12",
+          "p-review20"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-hart92",
+          "p-blued12",
+          "p-review20"
+        ]
+      },
+      {
+        "query": "把总功率拆成单台电器",
+        "intent": "负荷分解（不用分解二字提问）",
+        "expect": [
+          "p-hart92",
+          "p-review20"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-hart92",
+          "p-zeifman11",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "滑动窗口多长合适",
+        "intent": "窗长选择",
+        "expect": [
+          "p-anderson12"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-anderson12",
+          "p-hart92",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "查准查全怎么一起报",
+        "intent": "评测口径（精确率/召回/F1）",
+        "expect": [
+          "p-review20"
+        ],
+        "rank": null,
+        "top3": []
+      },
+      {
+        "query": "小功率变化检不出来",
+        "intent": "小幅跃变瓶颈",
+        "expect": [
+          "p-anderson12",
+          "p-review20"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-hart92",
+          "p-anderson12",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "好几台电器同时开",
+        "intent": "同时投切导致合并",
+        "expect": [
+          "p-anderson12",
+          "p-review20"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-blued12",
+          "p-review20",
+          "p-hart92"
+        ]
+      },
+      {
+        "query": "变频空调那种斜坡负载",
+        "intent": "阶跃假设失效",
+        "expect": [
+          "p-anderson12"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-hart92",
+          "p-anderson12"
+        ]
+      },
+      {
+        "query": "换个房子就失效",
+        "intent": "跨户迁移与重新标定",
+        "expect": [
+          "p-anderson12",
+          "p-review20"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-review20",
+          "p-hart92"
+        ]
+      },
+      {
+        "query": "采样率不同怎么比",
+        "intent": "跨数据集可比性",
+        "expect": [
+          "p-review20"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-review20",
+          "p-blued12",
+          "p-hart92"
+        ]
+      },
+      {
+        "query": "有哪些公开数据",
+        "intent": "数据集清单",
+        "expect": [
+          "p-review20",
+          "p-blued12"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-hart92",
+          "p-review20",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "deep learning 在 NILM 上",
+        "intent": "数据驱动路线",
+        "expect": [
+          "p-review20"
+        ],
+        "rank": 3,
+        "top3": [
+          "p-anderson12",
+          "p-hart92",
+          "p-review20"
+        ]
+      },
+      {
+        "query": "维特比解码",
+        "intent": "解码算法（Viterbi 的中文说法）",
+        "expect": [
+          "p-zeifman11"
+        ],
+        "rank": null,
+        "top3": []
+      }
+    ]
+  },
+  "with_synonyms": {
+    "expand": true,
+    "queries": 16,
+    "hit_at_1": 0.5,
+    "hit_at_3": 0.8125,
+    "hit_at_5": 1.0,
+    "miss_rate": 0.0,
+    "mrr": 0.7,
+    "rows": [
+      {
+        "query": "投切那一刻怎么捕捉",
+        "intent": "事件检测的基本动作",
+        "expect": [
+          "p-anderson12",
+          "p-hart92"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-anderson12",
+          "p-review20",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "门限设多少才不虚警",
+        "intent": "阈值与虚警（虚警=误报，考同义词）",
+        "expect": [
+          "p-anderson12",
+          "p-review20"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-anderson12",
+          "p-review20",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "false alarm 太多怎么办",
+        "intent": "英文提问命中中文正文（误报）",
+        "expect": [
+          "p-anderson12",
+          "p-zeifman11"
+        ],
+        "rank": 4,
+        "top3": [
+          "p-review20",
+          "p-blued12",
+          "p-hart92"
+        ]
+      },
+      {
+        "query": "隐状态序列怎么推",
+        "intent": "HMM 推断（隐状态只在该文出现）",
+        "expect": [
+          "p-zeifman11"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-zeifman11",
+          "p-hart92",
+          "p-anderson12"
+        ]
+      },
+      {
+        "query": "有没有事件级标注的公开数据集",
+        "intent": "数据集与标注粒度",
+        "expect": [
+          "p-blued12",
+          "p-review20"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-hart92",
+          "p-blued12",
+          "p-review20"
+        ]
+      },
+      {
+        "query": "把总功率拆成单台电器",
+        "intent": "负荷分解（不用分解二字提问）",
+        "expect": [
+          "p-hart92",
+          "p-review20"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-hart92",
+          "p-zeifman11",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "滑动窗口多长合适",
+        "intent": "窗长选择",
+        "expect": [
+          "p-anderson12"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-anderson12",
+          "p-hart92",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "查准查全怎么一起报",
+        "intent": "评测口径（精确率/召回/F1）",
+        "expect": [
+          "p-review20"
+        ],
+        "rank": 5,
+        "top3": [
+          "p-anderson12",
+          "p-blued12",
+          "p-zeifman11"
+        ]
+      },
+      {
+        "query": "小功率变化检不出来",
+        "intent": "小幅跃变瓶颈",
+        "expect": [
+          "p-anderson12",
+          "p-review20"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-hart92",
+          "p-anderson12",
+          "p-zeifman11"
+        ]
+      },
+      {
+        "query": "好几台电器同时开",
+        "intent": "同时投切导致合并",
+        "expect": [
+          "p-anderson12",
+          "p-review20"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-blued12",
+          "p-review20",
+          "p-hart92"
+        ]
+      },
+      {
+        "query": "变频空调那种斜坡负载",
+        "intent": "阶跃假设失效",
+        "expect": [
+          "p-anderson12"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-hart92",
+          "p-anderson12"
+        ]
+      },
+      {
+        "query": "换个房子就失效",
+        "intent": "跨户迁移与重新标定",
+        "expect": [
+          "p-anderson12",
+          "p-review20"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-review20",
+          "p-hart92"
+        ]
+      },
+      {
+        "query": "采样率不同怎么比",
+        "intent": "跨数据集可比性",
+        "expect": [
+          "p-review20"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-review20",
+          "p-blued12",
+          "p-hart92"
+        ]
+      },
+      {
+        "query": "有哪些公开数据",
+        "intent": "数据集清单",
+        "expect": [
+          "p-review20",
+          "p-blued12"
+        ],
+        "rank": 2,
+        "top3": [
+          "p-hart92",
+          "p-review20",
+          "p-blued12"
+        ]
+      },
+      {
+        "query": "deep learning 在 NILM 上",
+        "intent": "数据驱动路线",
+        "expect": [
+          "p-review20"
+        ],
+        "rank": 4,
+        "top3": [
+          "p-hart92",
+          "p-blued12",
+          "p-anderson12"
+        ]
+      },
+      {
+        "query": "维特比解码",
+        "intent": "解码算法（Viterbi 的中文说法）",
+        "expect": [
+          "p-zeifman11"
+        ],
+        "rank": 1,
+        "top3": [
+          "p-zeifman11",
+          "p-review20",
+          "p-hart92"
+        ]
+      }
+    ]
+  }
+}

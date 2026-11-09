@@ -8,13 +8,14 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from . import memory, report
+from . import memory, report, synonyms
 from .builder import build_resume, render_resume_markdown
 from .config import Config
 from .index import Index
 from .parser import SUPPORTED
 from .pc import PowerContextClient, PowerContextError
-from .text import highlight_snippet
+from .synonyms import SYNONYM_WEIGHT
+from .text import highlight_snippet, tokenize
 
 
 def _utf8_stdout() -> None:
@@ -109,7 +110,19 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 def cmd_search(args: argparse.Namespace) -> int:
     cfg, index, pc = _ctx(args)
     hits = index.search(args.query, top_k=args.top, year_from=args.year_from,
-                        year_to=args.year_to, method=args.method, dataset=args.dataset)
+                        year_to=args.year_to, method=args.method, dataset=args.dataset,
+                        expand=not args.no_expand)
+    if args.explain:
+        weights = index.query_weights(args.query, expand=not args.no_expand)
+        base = set(tokenize(args.query))
+        added = {term: w for term, w in weights.items() if term not in base}
+        print(f"查询词 {len(base)} 个；同义扩展 {len(added)} 个（权重 {SYNONYM_WEIGHT}）")
+        print(f"  原始：{' '.join(sorted(base)) or '（空）'}")
+        if added:
+            print(f"  扩展：{' '.join(sorted(added))}")
+        for token, extra in synonyms.explain(base):
+            print(f"  {token} -> {' '.join(extra[:8])}")
+        print()
     if args.json:
         print(json.dumps([hit.as_dict() for hit in hits], ensure_ascii=False, indent=2))
         index.close()
@@ -261,6 +274,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--method")
     p.add_argument("--dataset")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--no-expand", action="store_true",
+                   help="关闭同义扩展，只用字面命中（用于对比漏召回）")
+    p.add_argument("--explain", action="store_true", help="打印查询被展开成哪些 term")
 
     p = sub.add_parser("note", parents=[common], help="写入一条结论/取舍/约束记忆")
     p.add_argument("--kind", choices=["finding", "decision", "constraint"], default="finding")

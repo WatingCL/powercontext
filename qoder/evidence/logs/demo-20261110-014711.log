@@ -1,11 +1,11 @@
-==== litcontext 验证流程 2026-11-10 01:35:48 ====
+==== litcontext 验证流程 2026-11-10 01:47:11 ====
 
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe doctor
 数据目录       D:\基础东西\桌面\数据库大赛\Qorder\powercontext\qoder\.data
 本地索引       0 篇 / 0 段（SQLite）
 PowerContext   http://127.0.0.1:8000 -> 可用
-scope          scp_6b38kwtshr9g4k2h7ycfh2yy8g（litcontext-nilm-event-detection）
+scope          scp_5jzgwts2bgf6gjxzkhmz8d3mzq（litcontext-nilm-event-detection）
 记忆条数       0  
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe ingest data/samples
@@ -20,64 +20,77 @@ $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe ingest 
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe search 广义似然比 事件检测 误报 --top 3
 1. [p-anderson12] 2012 Event Detection for Non-Intrusive Load Monitoring
-   §摘要  score=13.83
+   §摘要  score=17.06
    本文把事件检测从"阈值比较"提升为"统计检验"：把功率序列的变化看作均值跃变，
 用广义似然比（GLR）与累积和（CUSUM）检测跃变点，再对候选事件做分类。作者报告在 BLUED 上，
 统计检验类方法比固定阈值基线在误报控制上更稳。
 
 2. [p-anderson12] 2012 Event Detection for Non-Intrusive Load Monitoring
-   §方法  score=6.64
+   §方法  score=8.38
    GLR 维护两段滑动窗口（跃变前/后），对每一点计算两段均值差的对数似然比，超过阈值的点判为候选事件；
 CUSUM 则累积偏离参考均值的残差。两者都需要设定"最小可检测跃变幅值"和"判决阈值"。
 论文的一个关键做法是把事件检测与事件分类分开评测，避免分类误差掩盖检测误差。
 
 3. [p-blued12] 2012 BLUED - A Fully Labeled Public Dataset for Event-Based Non-Intrusive Load Monitoring Research
-   §结果  score=4.66
+   §结果  score=5.73
    演示数值：以功率阶跃阈值做基线事件检测，事件级 F1 约 0.75，误报集中在多电器同时投切与待机功率波动。
 
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe search 阈值 跨户 标定 --top 3
 1. [p-anderson12] 2012 Event Detection for Non-Intrusive Load Monitoring
-   §局限  score=5.26
+   §局限  score=10.64
    - 阈值（最小跃变幅值与判决门限）仍需按数据调参，跨户迁移时要重新标定。
 - 假设跃变是阶跃式的，对斜坡式负荷（变频设备）不成立。
 - 多电器近似同时投切时，会被合并成一次大幅跃变。
 
-2. [p-review20] 2020 A Review of Non-Intrusive Load Monitoring - Methods, Datasets and Evaluation
+2. [p-hart92] 1992 Nonintrusive Appliance Load Monitoring
+   §结果  score=4.29
+   演示数值：在单户两周数据上，两状态电器的识别准确率超过 90%，多状态与连续变化电器显著更低。
+作者给出的经验是：阶跃阈值需要按户调参，固定阈值跨户迁移会明显掉点。
+
+3. [p-review20] 2020 A Review of Non-Intrusive Load Monitoring - Methods, Datasets and Evaluation
    §方法谱系  score=3.39
    - 稳态特征 + 阈值/边沿检测：实现简单，阈值需按户标定。
 - 统计检验（GLR、CUSUM）：误报控制更好，小跃变仍是瓶颈。
 - 概率模型（HMM 及其因子化形式）：抑制孤立误报，状态空间随电器数增长。
 - 数据驱动（CNN、seq2point 等）：多用于非事件式的功率分解，事件式上的工作相对少，且对标注质量敏感。
 
-3. [p-hart92] 1992 Nonintrusive Appliance Load Monitoring
-   §结果  score=3.34
-   演示数值：在单户两周数据上，两状态电器的识别准确率超过 90%，多状态与连续变化电器显著更低。
-作者给出的经验是：阶跃阈值需要按户调参，固定阈值跨户迁移会明显掉点。
 
+---- 检索召回评测：关闭 / 开启同义扩展 ----
+
+$ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/python.exe scripts/eval_recall.py
+语料 5 篇 / 24 段；16 条查询
+指标                关闭扩展      开启扩展
+命中@1             0.375     0.500
+命中@3             0.812     0.812
+命中@5             0.812     1.000
+未命中率             0.188     0.000
+MRR              0.573     0.700
+已写出 D:\基础东西\桌面\数据库大赛\Qorder\powercontext\qoder\evidence\recall-eval.md
+已写出 D:\基础东西\桌面\数据库大赛\Qorder\powercontext\qoder\evidence\recall-eval.json
 
 ---- 写入研究判断（PowerContext Memory）----
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe note --kind finding --paper p-anderson12 --topic 事件检测 --text GLR/CUSUM 这类统计检验在大幅跃变上对误报的控制明显好于固定阈值 --evidence BLUED，|ΔP|>300W，精确率 0.86
-[记忆已写入] finding -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_f5a25a49c8d24b7693611b67a721a
+[记忆已写入] finding -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_2b2531d30a7a4039934cca1dddd70
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe note --kind finding --paper p-blued12 --topic 数据集 --text BLUED 是单户高密度事件标注，适合事件级评测，不适合训练数据驱动模型 --evidence 单户约一周
-[记忆已写入] finding -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_5bf588e097e340b289579e796b748
+[记忆已写入] finding -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_6fef8f0c110b4efe8fd9cf63e29bf
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe note --kind finding --paper p-review20 --topic 评测 --text 事件式方法在公开数据上 F1 多在 0.7–0.9，误差主要来自小跃变与多电器同时投切 --evidence 综述汇总
-[记忆已写入] finding -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_3ac36a8f4ca546539f9d056f7884c
+[记忆已写入] finding -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_6cfb8c527d4440228427eb1992425
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe note --kind decision --topic 事件检测 --method 固定阈值 --verdict reject --text 固定阈值跨户迁移会明显掉点，需按户重标定，不适合作为毕设主线 --reason 毕设只做单户但要求方法可迁移
-[记忆已写入] decision -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_29105dcdbeae412796738524588ef
+[记忆已写入] decision -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_254375b3c7f74407b9d2152841534
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe note --kind decision --topic 事件检测 --method HMM --verdict reject --text 因子 HMM 状态空间随电器数指数增长，全屋场景推断耗时不可接受 --reason 算力有限，且事件式评测需要显式事件输出
-[记忆已写入] decision -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_e28dec72594b4830849beecba91d3
+[记忆已写入] decision -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_e3cb300195d342c48298b158927a3
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe note --kind decision --topic 事件检测 --method GLR --verdict keep --text GLR 作为主线：能输出显式事件，误报可控，且可解释 --reason 与事件级评测口径一致
-[记忆已写入] decision -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_3a778ce810fe40eca1204bdd5be40
+[记忆已写入] decision -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_53a362eb241d43c898df7e447da03
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe note --kind constraint --text 只用 REDD house1，不外采数据；评测必须报事件级 F1 与匹配容差窗口
-[记忆已写入] constraint -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_3a39d6868c824111b4e2c1d7816b0
+[记忆已写入] constraint -> {"changed": true, "records": [{"artifact": {"family": "atomic-memory", "artifact_id": "art_93d6803fc6fa4a3f9558e938beb99
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe edge --paper p-anderson12 --method GLR --dataset BLUED --metric F1 --value 0.89 --note |ΔP|>300W
 [记忆已写入] edge
@@ -99,7 +112,7 @@ $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe resume
 - 已完成：读完 5 篇事件检测基础文献并做了取舍
 - 正在做：在 REDD house1 上复现阈值基线
 - 下一步：对比 GLR 与 CUSUM 的小跃变误报率
-- 记录时间：2026-11-10 01:35
+- 记录时间：2026-11-10 01:47
 
 ## 已经否掉的方向（别再走一遍）
 
@@ -113,8 +126,8 @@ $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe resume
 ## 已积累的结论（3 条）
 
 - [p-blued12] BLUED 是单户高密度事件标注，适合事件级评测，不适合训练数据驱动模型
-- [p-review20] 事件式方法在公开数据上 F1 多在 0.7–0.9，误差主要来自小跃变与多电器同时投切
 - [p-anderson12] GLR/CUSUM 这类统计检验在大幅跃变上对误报的控制明显好于固定阈值
+- [p-review20] 事件式方法在公开数据上 F1 多在 0.7–0.9，误差主要来自小跃变与多电器同时投切
 
 ## 上下文预算
 
@@ -127,7 +140,7 @@ PowerContext 调用：
 ---- 出稿：综述初稿 + 方法对比表 ----
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe brief --topic 事件检测 -o out/brief.md
-已写出 out\brief.md（1869 字符，引用 6 段原文）
+已写出 out\brief.md（1891 字符，引用 6 段原文）
 
 $ D:/基础东西/桌面/数据库大赛/.venv_pc/Scripts/litcontext.exe compare -o out/compare.md
 已写出 out/compare.md（3 条对比记忆）
