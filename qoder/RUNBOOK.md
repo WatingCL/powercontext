@@ -46,6 +46,34 @@ curl http://127.0.0.1:8000/health/live
 > 若 `powercontext config init` 要求填写模型凭证：Basic memory 模式下全部留空即可，
 > 本作品不使用生成式模型，结论由你自己写、由程序组装。
 
+### 1.1 两个必踩的坑（Windows）
+
+**① `config init` 生成 `.env` 后启动可能报错**
+
+```
+Invalid value: 1 validation error for ServerSettings
+mcp.path
+  Value error, MCP path must be an absolute non-root path
+```
+
+原因：PowerContext 在 Windows 上把 `POWERCONTEXT_SERVER_MCP_PATH=/mcp` 解析成了非绝对路径。
+本作品不使用 MCP，**把 `.env` 里这两行删掉即可**：
+
+```diff
+- POWERCONTEXT_SERVER_MCP_ENABLED=true
+- POWERCONTEXT_SERVER_MCP_PATH=/mcp
+```
+
+**② 数据库默认落在 C 盘**
+
+默认位置是 `%LOCALAPPDATA%\PowerContext\powercontext.db`。想放到别处，在 `.env` 里加一行：
+
+```
+POWERCONTEXT_HOME=D:/your/path/pc_runtime/home
+```
+
+（同一份 `.env` 里 `POWERCONTEXT_HOME` 指向的目录会被创建并用于存放 sqlite 库。）
+
 ---
 
 ## 2. 安装本作品
@@ -189,5 +217,5 @@ bash scripts/reset.sh     # 清空本地索引（不动 PowerContext 记忆）
 | 召回为空但确实写过记忆 | 确认两次用的是同一个 `LITCONTEXT_SCOPE_KEY`；scope 不同记忆不互通 |
 | `powercontext: command not found` | 没激活虚拟环境，或没装 `[cli,server]` 附加依赖 |
 | 导入 PDF 报 `需要 pypdf` | `pip install pypdf`（PDF 解析是可选的） |
-| Windows 上服务启动即退出 | 用 PowerShell / CMD 而不是 Git Bash 启动 `powercontext server run`；Windows 支持在 PowerContext 中标注为 experimental |
+| Windows 上服务启动即退出 | 见 §1.1：删掉 `.env` 里的 `POWERCONTEXT_SERVER_MCP_*` 两行；另建议用 PowerShell / CMD 而不是 Git Bash 启动 |
 | 中文检索命中少 | 中文按二元组切分，查询尽量用论文里的实词（如"暂态 阶跃 事件"） |
