@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "litcontext"
+version = "0.1.0"
+description = "Literature context module for NILM research: local passage index + PowerContext memory"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+pdf = ["pypdf>=4.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+litcontext = "litcontext.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+litcontext = ["web/*.html"]

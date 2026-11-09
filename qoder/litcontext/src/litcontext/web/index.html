@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>litcontext · 文献上下文工作台</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --line:#e3e6ea; --ink:#1b1f24; --muted:#6b7580;
+    --accent:#1f6feb; --accent-soft:#eaf1fe; --ok:#0f7b4f; --warn:#b3541e;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.65 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
+  header{padding:20px 28px;border-bottom:1px solid var(--line);background:var(--panel);
+         display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;letter-spacing:.3px}
+  .badge{font:12px/1 var(--mono);padding:5px 9px;border-radius:999px;border:1px solid var(--line);
+         color:var(--muted);background:#fafbfc}
+  .badge.on{color:var(--ok);border-color:#bfe3d2;background:#f0f9f4}
+  .badge.off{color:var(--warn);border-color:#f0d3bf;background:#fdf4ef}
+  main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:18px;padding:18px 28px 40px}
+  @media (max-width:1080px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .panel h2{font-size:14px;margin:0 0 12px;color:var(--muted);font-weight:600;
+            text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between;align-items:center}
+  .src{font:11px/1 var(--mono);color:var(--accent);background:var(--accent-soft);
+       padding:4px 7px;border-radius:6px;letter-spacing:0;text-transform:none}
+  input[type=text],textarea,select{width:100%;padding:9px 11px;border:1px solid var(--line);
+        border-radius:8px;font:inherit;background:#fff;color:inherit}
+  input[type=text]:focus,textarea:focus,select:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  textarea{min-height:64px;resize:vertical}
+  button{padding:8px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);
+         color:#fff;font:inherit;cursor:pointer}
+  button.ghost{background:#fff;color:var(--accent)}
+  button:disabled{opacity:.5;cursor:default}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .row > *{flex:0 0 auto}
+  .row input[type=text]{flex:1 1 220px}
+  .hit{border-top:1px solid var(--line);padding:12px 0}
+  .hit:first-child{border-top:none}
+  .hit h3{font-size:14px;margin:0 0 4px;font-weight:600}
+  .hit .meta{font:12px/1.5 var(--mono);color:var(--muted);margin-bottom:6px}
+  .hit p{margin:0;color:#333b44;font-size:14px}
+  .hit mark{background:#fff2b8;color:inherit;padding:0 1px}
+  .card{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .card h4{margin:0 0 6px;font-size:13px;color:var(--muted);font-weight:600}
+  .kv{font-size:13.5px;margin:2px 0}
+  .kv b{font-weight:600}
+  .stat{display:flex;gap:14px;font:12px/1.4 var(--mono);color:var(--muted);flex-wrap:wrap}
+  pre.md{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:14px;
+         overflow:auto;max-height:420px;font:13px/1.7 var(--mono);white-space:pre-wrap;margin:0}
+  .empty{color:var(--muted);font-size:13.5px}
+  .tabs{display:flex;gap:6px;margin-bottom:10px}
+  .tabs button{background:#fff;color:var(--muted);border-color:var(--line);font-size:13px;padding:6px 11px}
+  .tabs button.active{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+  .hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+  .err{color:var(--warn);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>litcontext <span style="color:var(--muted);font-weight:400">文献上下文工作台</span></h1>
+  <span class="badge" id="scope-badge">NILM 事件检测 · 毕设</span>
+  <span class="badge" id="pc-badge">PowerContext 检查中…</span>
+  <span class="badge" id="idx-badge">本地索引 …</span>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>① 检索原文 <span class="src">SQLite · BM25</span></h2>
+    <div class="row">
+      <input type="text" id="q" placeholder="例如：事件检测 暂态 GLR 误报" />
+      <select id="year_from" style="width:120px">
+        <option value="">全部年份</option>
+        <option value="2015">2015 起</option>
+        <option value="2018">2018 起</option>
+        <option value="2020">2020 起</option>
+      </select>
+      <button id="btn-search">检索</button>
+    </div>
+    <p class="hint">中文按二元组、英文按词切分；同篇论文最多取 2 段，结果带出处章节。</p>
+    <div id="hits" style="margin-top:10px"></div>
+  </section>
+
+  <section class="panel">
+    <h2>② 研究记忆 <span class="src">PowerContext</span></h2>
+    <div class="stat" id="mem-stat"></div>
+    <div id="resume" style="margin-top:10px"></div>
+    <h4 style="font-size:13px;color:var(--muted);margin:16px 0 8px">写一条新记忆</h4>
+    <div class="row" style="margin-bottom:8px">
+      <select id="kind" style="width:150px">
+        <option value="finding">结论 finding</option>
+        <option value="decision">取舍 decision</option>
+        <option value="constraint">约束 constraint</option>
+      </select>
+      <select id="verdict" style="width:130px">
+        <option value="keep">保留</option>
+        <option value="reject">否决</option>
+        <option value="unsure">待定</option>
+      </select>
+    </div>
+    <textarea id="text" placeholder="例：GLR 在 REDD house1 上对多状态电器的稳态阶跃误报偏高，暂不作为主线方法。"></textarea>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="paper" placeholder="paper id（可空）" style="max-width:140px" />
+      <input type="text" id="topic" placeholder="主题（可空）" style="max-width:180px" />
+      <button id="btn-note">写入记忆</button>
+    </div>
+    <p class="hint" id="note-hint">写入后刷新页面仍能召回 —— 数据在 PowerContext 里，不在浏览器里。</p>
+  </section>
+
+  <section class="panel" style="grid-column:1/-1">
+    <h2>③ 出稿 <span class="src">检索结果 + 记忆</span></h2>
+    <div class="tabs">
+      <button id="tab-brief" class="active">综述初稿</button>
+      <button id="tab-compare">方法对比表</button>
+      <input type="text" id="topic" value="事件检测" style="max-width:200px;margin-left:auto" />
+      <button class="ghost" id="btn-gen">生成</button>
+    </div>
+    <pre class="md" id="out">点「生成」：初稿由记忆中的结论排序，每条论断都带 [paper_id] 出处。</pre>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => (s || "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+async function jget(url){
+  const r = await fetch(url);
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || ("HTTP " + r.status));
+  return d;
+}
+async function jpost(url, body){
+  const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"},
+                              body: JSON.stringify(body)});
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || ("HTTP " + r.status));
+  return d;
+}
+
+function renderHits(data){
+  const box = $("hits");
+  if(!data.hits.length){ box.innerHTML = '<p class="empty">没有命中，换个说法或先导入文献。</p>'; return; }
+  box.innerHTML = data.hits.map((h,i)=>`
+    <div class="hit">
+      <h3>${i+1}. ${esc(h.title)}</h3>
+      <div class="meta">[${esc(h.paper_id)}] ${h.year||"----"} · §${esc(h.section)} · score ${h.score}</div>
+      <p>${esc(h.text)}</p>
+    </div>`).join("");
+}
+
+function renderResume(card){
+  const box = $("resume");
+  const p = card.progress;
+  let html = "";
+  if(p){
+    html += `<div class="card"><h4>上次进度</h4>
+      <div class="kv"><b>已完成</b>　${esc(p.done||"—")}</div>
+      <div class="kv"><b>正在做</b>　${esc(p.current||"—")}</div>
+      <div class="kv"><b>下一步</b>　${esc(p.next||"—")}</div>
+      <div class="kv" style="color:var(--muted);font-size:12px">${esc(p.created||"")}</div></div>`;
+  } else {
+    html += `<div class="card"><h4>上次进度</h4><div class="empty">还没有进度记录（命令行 <code>litcontext progress</code> 写入）。</div></div>`;
+  }
+  if(card.rejected.length){
+    html += `<div class="card"><h4>已否决的路线</h4>` + card.rejected.map(r =>
+      `<div class="kv"><b>${esc(r.method||"未标注")}</b>　${esc(r.text||"")}</div>`).join("") + `</div>`;
+  }
+  if(card.constraints.length){
+    html += `<div class="card"><h4>实验约束</h4>` + card.constraints.map(r =>
+      `<div class="kv">${esc(r.text||"")}</div>`).join("") + `</div>`;
+  }
+  const n = (card.findings||[]).length;
+  html += `<div class="card"><h4>已积累结论 ${n} 条</h4>` +
+    (card.findings||[]).slice(-6).map(r =>
+      `<div class="kv">[${esc(r.paper||"?")}] ${esc(r.text||"")}</div>`).join("") + `</div>`;
+  box.innerHTML = html;
+  const pr = card.prepared || {};
+  $("mem-stat").innerHTML = `<span>记忆 ${card.records.length} 条</span>
+    <span>上下文 ${pr.bytes||0}/${pr.budget||0} B</span>
+    <span>状态 ${esc(pr.status||"unknown")}</span>`;
+}
+
+async function loadStats(){
+  try{
+    const d = await jget("/api/stats");
+    $("idx-badge").textContent = `本地索引 ${d.index.papers} 篇 / ${d.index.passages} 段`;
+    $("pc-badge").textContent = d.pc_alive ? "PowerContext 已连接" : "PowerContext 不可达";
+    $("pc-badge").className = "badge " + (d.pc_alive ? "on" : "off");
+  }catch(e){ $("pc-badge").textContent = "连接异常"; $("pc-badge").className = "badge off"; }
+}
+
+async function loadResume(){
+  try{
+    const d = await jget("/api/resume");
+    renderResume(d.card);
+  }catch(e){
+    $("resume").innerHTML = `<p class="err">召回失败：${esc(e.message)}</p>`;
+    $("pc-badge").className = "badge off";
+  }
+}
+
+$("btn-search").onclick = async () => {
+  const q = $("q").value.trim();
+  if(!q) return;
+  const y = $("year_from").value;
+  try{
+    renderHits(await jget(`/api/search?q=${encodeURIComponent(q)}&year_from=${y}`));
+  }catch(e){ $("hits").innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+};
+$("q").addEventListener("keydown", e => { if(e.key === "Enter") $("btn-search").click(); });
+
+$("btn-note").onclick = async () => {
+  const text = $("text").value.trim();
+  if(!text){ $("note-hint").textContent = "先写点内容"; return; }
+  try{
+    await jpost("/api/note", {kind:$("kind").value, text, verdict:$("verdict").value,
+                              paper:$("paper").value.trim(), topic:$("topic").value.trim()});
+    $("text").value = ""; $("note-hint").textContent = "已写入 PowerContext，正在刷新记忆面板…";
+    await loadResume(); await loadStats();
+    $("note-hint").textContent = "已写入。关掉服务再启动，这条记忆依然在。";
+  }catch(e){ $("note-hint").textContent = "写入失败：" + e.message; }
+};
+
+let mode = "brief";
+$("tab-brief").onclick = () => { mode="brief"; $("tab-brief").classList.add("active"); $("tab-compare").classList.remove("active"); };
+$("tab-compare").onclick = () => { mode="compare"; $("tab-compare").classList.add("active"); $("tab-brief").classList.remove("active"); };
+$("btn-gen").onclick = async () => {
+  $("out").textContent = "生成中…";
+  try{
+    const url = mode === "brief"
+      ? `/api/brief?topic=${encodeURIComponent($("topic").value.trim()||"事件检测")}`
+      : "/api/compare";
+    const d = await jget(url);
+    $("out").textContent = d.markdown;
+  }catch(e){ $("out").textContent = "失败：" + e.message; }
+};
+
+loadStats().then(loadResume);
+
+// 首次进入先跑一个示例检索，避免左栏空着；?demo=1 时再自动出一版初稿
+(async () => {
+  if (!$("q").value) $("q").value = "事件检测 暂态 阶跃 误报";
+  try { renderHits(await jget(`/api/search?q=${encodeURIComponent($("q").value)}&year_from=`)); }
+  catch(e) { /* 后端未就绪时忽略 */ }
+  if (new URLSearchParams(location.search).has("demo")) $("btn-gen").click();
+})();
+</script>
+</body>
+</html>

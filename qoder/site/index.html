@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>文献脉络 LitContext · 读完的文献会留下判断</title>
+<meta name="description" content="面向科研新手的文献上下文助手：用 PowerContext 保存结论、否决理由与阅读进度，下次开工前一条命令召回，并生成带出处的综述初稿。" />
+<style>
+  :root{
+    --ink:#101418; --ink-2:#3d4650; --muted:#6b7480; --line:#e2e6ea;
+    --bg:#ffffff; --bg-2:#f7f8fa; --accent:#1f5fd0; --accent-2:#eaf0fb;
+    --warm:#b3541e; --ok:#0f7b4f;
+    --serif:"Iowan Old Style","Songti SC","Source Han Serif SC","Noto Serif SC",Georgia,serif;
+    --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 var(--sans);
+       -webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 28px}
+  header{border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(255,255,255,.92);
+         backdrop-filter:blur(8px);z-index:10}
+  header .wrap{display:flex;align-items:center;gap:18px;height:58px}
+  header .brand{font-weight:600;letter-spacing:.2px}
+  header nav{margin-left:auto;display:flex;gap:18px;font-size:14px}
+  header nav a{color:var(--ink-2)}
+  @media(max-width:720px){header nav{display:none}}
+
+  .hero{padding:76px 0 54px;border-bottom:1px solid var(--line);background:
+        linear-gradient(180deg,#fbfcfe,#ffffff)}
+  .kicker{font:13px/1 var(--mono);color:var(--accent);letter-spacing:.12em;text-transform:uppercase}
+  h1{font:600 44px/1.25 var(--serif);margin:16px 0 14px;letter-spacing:-.4px}
+  h1 em{font-style:normal;color:var(--accent)}
+  .lede{font-size:18px;color:var(--ink-2);max-width:720px;margin:0 0 26px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .btn{display:inline-block;padding:10px 18px;border-radius:8px;border:1px solid var(--accent);
+       background:var(--accent);color:#fff;font-size:15px}
+  .btn.ghost{background:#fff;color:var(--accent)}
+  .btn:hover{text-decoration:none;opacity:.92}
+  .meta{font:13px/1.6 var(--mono);color:var(--muted);margin-top:22px}
+
+  section{padding:58px 0;border-bottom:1px solid var(--line)}
+  h2{font:600 26px/1.3 var(--serif);margin:0 0 8px}
+  .sub{color:var(--muted);margin:0 0 28px;font-size:15px}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  @media(max-width:840px){.grid3{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:12px;padding:18px 20px;background:#fff}
+  .card h3{margin:0 0 6px;font-size:15px}
+  .card p{margin:0;color:var(--ink-2);font-size:14.5px}
+  .card .q{font:12px/1 var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+  .steps{counter-reset:s;display:grid;gap:14px}
+  .step{display:grid;grid-template-columns:34px 1fr;gap:14px;align-items:start}
+  .step:before{counter-increment:s;content:counter(s);font:600 14px/30px var(--mono);
+    width:30px;height:30px;text-align:center;border-radius:999px;background:var(--accent-2);
+    color:var(--accent)}
+  .step h3{margin:2px 0 4px;font-size:15.5px}
+  .step p{margin:0;color:var(--ink-2);font-size:14.5px}
+
+  pre{background:#0f1520;color:#dbe4f0;border-radius:10px;padding:16px 18px;overflow:auto;
+      font:13px/1.7 var(--mono);margin:0}
+  pre .c{color:#7d8da3}
+  pre .k{color:#8fb8ff}
+
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-weight:600;color:var(--ink-2);background:var(--bg-2);font-size:13.5px}
+  td code{font:12.5px/1.6 var(--mono);background:var(--bg-2);padding:1px 5px;border-radius:4px}
+
+  .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  @media(max-width:840px){.metrics{grid-template-columns:repeat(2,1fr)}}
+  .metric{border:1px solid var(--line);border-radius:12px;padding:16px}
+  .metric .n{font:600 28px/1.1 var(--serif);color:var(--accent)}
+  .metric .l{font-size:13px;color:var(--muted);margin-top:6px}
+
+  figure{margin:0}
+  figure img{width:100%;border:1px solid var(--line);border-radius:12px;display:block}
+  figcaption{font-size:13px;color:var(--muted);margin-top:8px}
+  .shots{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:840px){.shots{grid-template-columns:1fr}}
+
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;align-items:stretch;
+        border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:22px}
+  @media(max-width:840px){.flow{grid-template-columns:1fr}}
+  .flow div{padding:16px;border-right:1px solid var(--line);background:#fff}
+  .flow div:last-child{border-right:none}
+  .flow .t{font:12px/1 var(--mono);color:var(--accent); letter-spacing:.08em}
+  .flow .h{font-weight:600;margin:8px 0 4px;font-size:14.5px}
+  .flow .d{font-size:13px;color:var(--muted);line-height:1.6}
+  .flow .lt{background:var(--bg-2)}
+  .flow .pc{background:#f4f8ff}
+
+  blockquote{margin:0;padding:14px 18px;border-left:3px solid var(--accent);background:var(--bg-2);
+             color:var(--ink-2);font-size:14.5px;border-radius:0 8px 8px 0}
+
+  footer{padding:38px 0 60px;color:var(--muted);font-size:13.5px}
+  footer .wrap{display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="brand">文献脉络 LitContext</span>
+    <nav>
+      <a href="#pain">问题</a>
+      <a href="#how">怎么用</a>
+      <a href="#tech">技术分工</a>
+      <a href="#result">验证结果</a>
+      <a href="#start">快速开始</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="kicker">Qoder × OceanBase · PowerContext</div>
+    <h1>文献读过之后，<em>判断应该留下</em></h1>
+    <p class="lede">
+      写综述时最贵的不是没读过那篇论文，而是忘了自己当时为什么否掉那条路线。
+      LitContext 把结论、否决理由、实验约束和阅读进度写进 PowerContext，
+      下次开工前一条命令召回成一屏上下文，并据此生成<b>每条论断都带出处</b>的综述初稿。
+    </p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/WatingCL/powercontext/tree/2026-competition-ecosystem/qoder">查看代码仓库</a>
+      <a class="btn ghost" href="#start">三步跑起来</a>
+    </div>
+    <div class="meta">Python 3.11+ · PowerContext 1.5.0 · 无需大模型 API Key · 无需 Docker</div>
+  </div>
+</div>
+
+<section id="pain">
+  <div class="wrap">
+    <h2>真实痛点：资料不缺，判断丢了</h2>
+    <p class="sub">这不是"文献管理"问题，是"研究判断没有结构化保存"的问题。</p>
+    <div class="grid3">
+      <div class="card">
+        <div class="q">场景一</div>
+        <h3>三个月前读过，现在只记得结论</h3>
+        <p>知道"有一篇说阈值法不行"，但记不清是哪篇、在什么数据上、误差多少。于是又读了一遍。</p>
+      </div>
+      <div class="card">
+        <div class="q">场景二</div>
+        <h3>否掉的方法，又研究了一遍</h3>
+        <p>当时排除 HMM 的理由写在某个草稿里，找不到。两周后又把状态空间复杂度推导了一次。</p>
+      </div>
+      <div class="card">
+        <div class="q">场景三</div>
+        <h3>每次回来都要重新热机</h3>
+        <p>"上次做到哪一步、下一步验什么"散在聊天记录里，重新进入课题要花半小时。</p>
+      </div>
+    </div>
+    <blockquote style="margin-top:22px">
+      文献可以重新下载，索引可以重建；<b>但"我为什么这么选"只存在于当时的上下文里，会话结束就没了。</b>
+    </blockquote>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2>怎么用：四步，都是命令</h2>
+    <p class="sub">面向每天都在终端里读论文的人，不额外开一个网页应用。</p>
+    <div class="steps">
+      <div class="step">
+        <div>
+          <h3>导入文献</h3>
+          <p>Markdown / 纯文本 / PDF，按章节切块进本地索引，摘要片段同时写进 PowerContext 的 Source journal 留作证据。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>检索原文</h3>
+          <p>中英混排分词 + BM25，支持年份区间与"方法/数据集"字段过滤，命中段落带 <code>[paper_id §章节]</code> 出处。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>写下判断（核心）</h3>
+          <p>结论、否决理由、实验约束、进度、方法对比数据分五类写入 PowerContext Memory。
+             "为什么"单独存在 <code>reason</code> 字段里。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>召回与出稿</h3>
+          <p><code>resume</code> 召回一屏上下文（有字节预算）；<code>brief</code> 生成综述初稿，<code>compare</code> 生成方法对比表。</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:26px">
+<pre><span class="c"># 1. 导入（正文进索引，摘要进 PowerContext Source）</span>
+<span class="k">$</span> litcontext ingest ~/papers/nilm
+
+<span class="c"># 2. 检索原文</span>
+<span class="k">$</span> litcontext search "广义似然比 事件检测 误报" --top 3
+
+<span class="c"># 3. 写下判断：结论 / 否决理由 / 约束 / 进度 / 对比数据</span>
+<span class="k">$</span> litcontext note --kind decision --method HMM --verdict reject \
+    --text "因子 HMM 状态空间随电器数指数增长，全屋推断耗时不可接受" \
+    --reason "算力有限，且事件式评测要显式事件输出"
+
+<span class="c"># 4. 一屏召回，然后出稿</span>
+<span class="k">$</span> litcontext resume
+<span class="k">$</span> litcontext brief --topic 事件检测 -o out/brief.md</pre>
+    </div>
+  </div>
+</section>
+
+<section id="tech">
+  <div class="wrap">
+    <h2>技术分工：谁存什么，丢了会怎样</h2>
+    <p class="sub">只选用 PowerContext（赛题要求 seekdb / PowerContext 至少其一），并刻意不接大模型。</p>
+    <div class="flow">
+      <div class="lt">
+        <div class="t">SQLite · BM25</div>
+        <div class="h">文献段落索引</div>
+        <div class="d">论文正文切块与排序检索<br><b>可重建</b>：删库重灌即可</div>
+      </div>
+      <div class="pc">
+        <div class="t">POWERCONTEXT · MEMORY</div>
+        <div class="h">结论 / 否决 / 约束 / 进度</div>
+        <div class="d">原子记忆，按 kind 分类<br><b>不可重建</b>：这是你的判断</div>
+      </div>
+      <div class="pc">
+        <div class="t">POWERCONTEXT · SOURCE</div>
+        <div class="h">论文摘要证据</div>
+        <div class="d">每篇一条 Source，留存原始片段<br>可回溯"结论从哪来"</div>
+      </div>
+      <div class="pc">
+        <div class="t">POWERCONTEXT · PREPARE</div>
+        <div class="h">有界上下文装配</div>
+        <div class="d">按 max_bytes 返回 ready/empty<br>不是全量倾倒</div>
+      </div>
+    </div>
+
+    <table style="margin-top:24px">
+      <thead>
+        <tr><th style="width:180px">组成</th><th>在项目里做什么</th><th style="width:210px">能不能替换</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>PowerContext</b></td>
+          <td>记忆层：<code>/v1/memory/remember</code> 写入判断，<code>/v1/memory/search</code> 召回，
+              <code>/v1/context/prepare</code> 做有界装配，<code>/v1/sources/content</code> 存证据。</td>
+          <td>不能。换成文件或数据库就退化成"又一个笔记软件"，跨会话召回和预算控制都没了。</td>
+        </tr>
+        <tr>
+          <td>本地 SQLite + BM25</td>
+          <td>文献段落索引，供检索与初稿引用原文。</td>
+          <td>能。<code>.data/</code> 删掉重新 <code>ingest</code> 即可，不影响任何研究判断。</td>
+        </tr>
+        <tr>
+          <td>大模型</td>
+          <td>不使用。初稿由模板拼装，引用全部来自记忆与索引。</td>
+          <td>不需要。评审无需任何 API Key 即可复现，输出逐字一致。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="result">
+  <div class="wrap">
+    <h2>验证结果</h2>
+    <p class="sub">一次完整执行的真实数字（5 篇演示语料，PowerContext 1.5.0，无模型配置）。</p>
+    <div class="metrics">
+      <div class="metric"><div class="n">5 / 24</div><div class="l">导入论文 / 切块段落</div></div>
+      <div class="metric"><div class="n">11</div><div class="l">写入记忆（5 类）</div></div>
+      <div class="metric"><div class="n">3592<span style="font-size:15px"> /4000 B</span></div><div class="l">有界上下文占用</div></div>
+      <div class="metric"><div class="n">6</div><div class="l">初稿引用的原文段落</div></div>
+    </div>
+
+    <div style="margin-top:26px">
+<pre><span class="c">$ litcontext resume   # 服务重启后执行，内容不变</span>
+<span class="c"># 上次的进度</span>
+- 已完成：读完 5 篇事件检测基础文献并做了取舍
+- 正在做：在 REDD house1 上复现阈值基线
+- 下一步：对比 GLR 与 CUSUM 的小跃变误报率
+
+<span class="c">## 已经否掉的方向（别再走一遍）</span>
+- <b>HMM</b>：因子 HMM 状态空间随电器数指数增长，全屋场景推断耗时不可接受
+- <b>固定阈值</b>：跨户迁移会明显掉点，需按户重标定
+
+<span class="c">## 上下文预算</span>
+- 状态：ready　占用：3592 / 4000 字节
+<span class="c">  POST /v1/scopes -> 200 · /v1/memory/search -> 200 · /v1/context/prepare -> 200</span></pre>
+    </div>
+
+    <div class="shots" style="margin-top:26px">
+      <figure>
+        <img src="assets/home.png" alt="LitContext 工作台：左侧检索原文，右侧研究记忆，顶部显示 PowerContext 连接状态" />
+        <figcaption>工作台：左栏检索原文（SQLite·BM25），右栏研究记忆（PowerContext），顶部实时显示连接状态</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/brief.png" alt="生成综述初稿：研究脉络、已有结论、已排除路线、约束、可引用段落" />
+        <figcaption>一键出稿：研究脉络 / 结论 / 已排除路线 / 约束 / 可引用段落，每条带 [paper_id]</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <h2>三步跑起来</h2>
+    <p class="sub">环境要求：Python 3.11+。不需要 Docker，不需要任何模型凭证。</p>
+<pre><span class="c"># 1. 启动 PowerContext（Basic memory 模式，模型留空）</span>
+<span class="k">$</span> pip install "powercontext[cli,server]==1.5.0"
+<span class="k">$</span> powercontext config init --template
+<span class="k">$</span> powercontext server run
+
+<span class="c"># 2. 安装本作品</span>
+<span class="k">$</span> cd qoder
+<span class="k">$</span> cp .env.example .env
+<span class="k">$</span> pip install -e ./litcontext
+
+<span class="c"># 3. 自检 + 跑通验证样例 + 打开工作台</span>
+<span class="k">$</span> litcontext doctor
+<span class="k">$</span> bash scripts/demo.sh
+<span class="k">$</span> litcontext serve --port 8765</pre>
+    <p class="sub" style="margin-top:18px">
+      完整步骤、常见问题与 Windows 注意事项见仓库里的 <code>qoder/RUNBOOK.md</code>；
+      逐条命令与预期输出见 <code>qoder/VERIFY-SAMPLE.md</code>。
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>文献脉络 LitContext · Qoder × OceanBase 参赛作品</span>
+    <span>演示语料为验证链路重写的样本，数值不可作为引用依据</span>
+  </div>
+</footer>
+
+</body>
+</html>
