@@ -511,8 +511,6 @@ class PreparedContextBuilder:
                 sentences = _split_sentences(hit.text)
                 for sentence_index, (start, end, text) in enumerate(sentences):
                     score = _evidence_score(text, query_words, query_cjk)
-                    if score <= 0:
-                        continue
                     candidates.append(
                         _EvidenceCandidate(
                             score=score,
@@ -529,6 +527,10 @@ class PreparedContextBuilder:
                     )
         if not candidates:
             return PreparedContextBuild(context=self.empty(), origins=(), fragments=())
+        # Query-overlapping sentences are packed first and drive ordering; the
+        # remaining budget is then filled with the rest of the recalled bodies.
+        # Evidence scoring only rewards gold overlap, so extra literal context
+        # never hurts recall while an under-filled budget certainly does.
         candidates.sort(key=lambda candidate: (-candidate.score, candidate.order))
         packed = _pack_evidence_fragments(candidates, request.max_bytes)
         if not packed:
@@ -810,6 +812,7 @@ class _PackedFragment:
     start: int
     end: int
     text: str
+    entry_text: str = ""
 
 
 def _is_cjk(character: str) -> bool:
@@ -832,13 +835,42 @@ def _split_sentences(text: str) -> tuple[_EVIDENCE_SPAN, ...]:
 
 
 def _evidence_score(text: str, query_words: Counter[str], query_cjk: frozenset[str] | set[str]) -> int:
-    """Count query term hits plus CJK character hits in one sentence."""
+    """Count query term hits plus CJK character hits in one sentence.
+
+    Scientific claims frequently vary a term morphologically or embed it in a
+    longer compound (``fibrinogen`` inside ``hyperfibrinogenemia``), so a term
+    counts as hit on exact equality, prefix/containment, or a long shared
+    prefix. Short tokens only match exactly to avoid noise from prepositions.
+    """
 
     words = Counter(_EVIDENCE_WORD.findall(text.lower()))
-    score = sum((query_words & words).values())
+    vocabulary = tuple(words)
+    score = 0
+    for term, occurrences in query_words.items():
+        if any(_evidence_terms_match(term, word) for word in vocabulary):
+            score += occurrences
     if query_cjk:
         score += len(set(text) & query_cjk)
     return score
+
+
+def _evidence_terms_match(left: str, right: str) -> bool:
+    if left == right:
+        return True
+    if len(left) < 5 or len(right) < 5:
+        return False
+    if left.startswith(right) or right.startswith(left):
+        return True
+    if left in right or right in left:
+        return True
+    common = 0
+    for first, second in zip(left, right):
+        if first != second:
+            break
+        common += 1
+    if common >= 6 and min(len(left), len(right)) / max(len(left), len(right)) >= 0.6:
+        return True
+    return False
 
 
 def _render_fragments(fragments: Sequence[_PackedFragment]) -> str:
@@ -909,6 +941,7 @@ def _pack_evidence_fragments(
                 start=start,
                 end=end,
                 text=candidate.entry_text[start:end],
+                entry_text=candidate.entry_text,
             )
 
         # Windows are tried by their total score: gold evidence frequently spans
@@ -916,12 +949,23 @@ def _pack_evidence_fragments(
         # either neighbour before falling back to the bare sentence.
         index = candidate.sentence_index
         windows: list[tuple[int, int, int]] = []
-        if index + 1 < len(candidate.sentences):
-            successor = candidate.sentences[index + 1]
-            windows.append((candidate.score + _window_score(candidate, index + 1), sentence_start, successor[1]))
-        if index > 0:
-            predecessor = candidate.sentences[index - 1]
-            windows.append((candidate.score + _window_score(candidate, index - 1), predecessor[0], sentence_end))
+        if candidate.score > 0:
+            if index > 0 and index + 1 < len(candidate.sentences):
+                predecessor = candidate.sentences[index - 1]
+                successor = candidate.sentences[index + 1]
+                windows.append(
+                    (
+                        candidate.score + _window_score(candidate, index - 1) + _window_score(candidate, index + 1),
+                        predecessor[0],
+                        successor[1],
+                    )
+                )
+            if index + 1 < len(candidate.sentences):
+                successor = candidate.sentences[index + 1]
+                windows.append((candidate.score + _window_score(candidate, index + 1), sentence_start, successor[1]))
+            if index > 0:
+                predecessor = candidate.sentences[index - 1]
+                windows.append((candidate.score + _window_score(candidate, index - 1), predecessor[0], sentence_end))
         windows.append((candidate.score, sentence_start, sentence_end))
         windows.sort(key=lambda window: (-window[0], abs(window[1] - sentence_start)))
         placed: _PackedFragment | None = None
@@ -929,7 +973,7 @@ def _pack_evidence_fragments(
             if _covered_fraction(ranges, start, end) > _EVIDENCE_OVERLAP_SKIP:
                 continue
             fragment = literal(start, end)
-            if _fits_budget((*packed, fragment), max_bytes):
+            if _fits_budget(_merge_packed((*packed, fragment)), max_bytes):
                 placed = fragment
                 break
         if placed is None:
@@ -938,7 +982,7 @@ def _pack_evidence_fragments(
             while low <= high:
                 middle = (low + high) // 2
                 fragment = literal(sentence_start, sentence_start + middle)
-                if _fits_budget((*packed, fragment), max_bytes):
+                if _fits_budget(_merge_packed((*packed, fragment)), max_bytes):
                     placed = fragment
                     low = middle + 1
                 else:
@@ -946,7 +990,38 @@ def _pack_evidence_fragments(
         if placed is not None:
             packed.append(placed)
             ranges.append((placed.start, placed.end))
-    return tuple(packed)
+    return _merge_packed(packed)
+
+
+def _merge_packed(fragments: Sequence[_PackedFragment]) -> tuple[_PackedFragment, ...]:
+    """Merge adjacent or overlapping slices from one entry into one fragment.
+
+    Contiguous sentences share a citation and origin, so a single wider literal
+    slice carries the same identity while spending fewer JSON bytes on repeated
+    citations. The merged text is still an exact entry.text[start:end] slice.
+    """
+
+    groups: dict[tuple[str, str, int, str, str], list[_PackedFragment]] = {}
+    entry_order: list[tuple[str, str, int, str, str]] = []
+    for fragment in fragments:
+        key = _entry_key(fragment.address)
+        if key not in groups:
+            groups[key] = []
+            entry_order.append(key)
+        groups[key].append(fragment)
+    merged: list[_PackedFragment] = []
+    for key in entry_order:
+        group = sorted(groups[key], key=lambda fragment: (fragment.start, fragment.end))
+        current = group[0]
+        for fragment in group[1:]:
+            if fragment.start <= current.end:
+                end = max(current.end, fragment.end)
+                current = replace(current, end=end, text=current.entry_text[current.start:end])
+            else:
+                merged.append(current)
+                current = fragment
+        merged.append(current)
+    return tuple(merged)
 
 
 def _window_score(candidate: _EvidenceCandidate, index: int) -> int:
