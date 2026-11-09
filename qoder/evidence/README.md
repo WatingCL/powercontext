@@ -33,9 +33,13 @@ bash scripts/demo.sh             # 终端 B：会新写一份 logs/demo-*.log �
   → `scripts/eval_recall.py --check`（命中@5 ≥ 0.95 且未命中率 ≤ 0.05 才放行）→ 传 Artifacts
 - 产物：整个 `evidence/` 与 `out/`，可直接下载核对，含日志与召回评测 JSON
 
-> 说明：2026-11-09 18:10Z 起 GitHub Actions 出现平台级故障（状态页标记 major outage），
-> 期间推送的运行在创建 job 前即失败，与本项目代码无关；故障发生前的四次运行均为 success。
-> 故障恢复后在 Actions 页面点一次 **Re-run all jobs** 即可得到最新一次绿灯。
+**最近一次运行**：[run 42675737264](https://github.com/WatingCL/powercontext/actions/runs/42675737264)
+（提交 `6c201d5`，2026-11-09 18:38Z，13 个步骤全部 success，耗时 47 秒，Artifacts `qoder-evidence` 482 KB）。
+
+> 一段需要说明的插曲：2026-11-09 18:10Z—18:28Z 期间 GitHub Actions 发生平台级故障
+> （状态页标记 major outage），那三次运行为 **0 job 直接失败**——job 根本没被创建，
+> 与本项目代码无关。故障恢复后同一套代码重新运行即为上面这次全绿；
+> 故障前的四次运行（`b458926` / `f35a364` / `466cbaf` / `4692ede`）同样都是 success。
 
 ## 怎么核对"记忆不在本地"
 

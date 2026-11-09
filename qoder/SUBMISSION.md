@@ -19,12 +19,15 @@
 | 要求 | 怎么核对 | 状态 |
 | --- | --- | --- |
 | 1. 网站可访问（未登录也能开） | Qoder Sites 发布时选「任何人都可访问」，用无痕窗口打开验证 | 【待填】 |
-| 2. 项目能够运行 | `RUNBOOK.md` 三步 → `litcontext doctor` 显示 `PowerContext 可用` + `记忆条数 11` | ✅ 本机与 CI 均验证 |
+| 2. 项目能够运行 | `RUNBOOK.md` 三步 → `litcontext doctor` 显示 `PowerContext 可用` + `记忆条数 11` | ✅ 本机实跑；干净 Ubuntu 上 13 步 CI 全绿 |
 | 3. Qoder 开发可核对 | 录屏里应有 Qoder 账号 UID、五个会话、以及 `pc.py` / `memory.py` / `synonyms.py` 的生成过程 | 【待填】 |
 | 4. 技术结合有效 | 记忆读写记录：`evidence/logs/demo-*.log`、`evidence/logs/doctor.log`；召回：`evidence/recall-eval.md` | ✅ |
 
 CI 运行记录（评审可直接点开看每一步命令与产物）：
-<https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml>
+
+- 最近一次全绿：[run 42675737264](https://github.com/WatingCL/powercontext/actions/runs/42675737264)
+  —— 提交 `6c201d5`，13 个步骤全部 success，耗时 47 秒，Artifacts `qoder-evidence`（482 KB）
+- 工作流总览：<https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml>
 
 ## 三、评价维度对应物
 
