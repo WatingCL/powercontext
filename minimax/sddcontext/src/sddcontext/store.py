@@ -220,20 +220,26 @@ class SeekdbEmbeddedStore(_MySQLDialectStore):
         self.cfg = cfg
 
     def _connect(self):
+        import os
+
         import pylibseekdb as seekdb  # Linux only; imported lazily
 
+        # seekdb embedded mode stores data in a directory; create it first.
         try:
-            return seekdb.connect(self.cfg.seekdb_path)
-        except TypeError:
+            os.makedirs(self.cfg.seekdb_path, exist_ok=True)
+        except (FileExistsError, NotADirectoryError):
             pass
-        # Some builds expose open() + connect()
-        if hasattr(seekdb, "open"):
-            try:
-                seekdb.open(self.cfg.seekdb_path)
-            except TypeError:
-                seekdb.open()
+
+        # pylibseekdb requires open() before connect(); open() is process-wide.
+        try:
+            seekdb.open(self.cfg.seekdb_path)
+        except TypeError:
+            # different signature (no path arg) - open default location
+            seekdb.open()
+        try:
             return seekdb.connect()
-        raise RuntimeError("pylibseekdb connection failed: unsupported interface")
+        except TypeError:
+            return seekdb.connect(self.cfg.seekdb_path)
 
 
 class MySQLStore(_MySQLDialectStore):

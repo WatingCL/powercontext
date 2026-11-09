@@ -154,6 +154,7 @@ def cmd_state_show(cfg: Config, args: argparse.Namespace) -> int:
 def cmd_check(cfg: Config, args: argparse.Namespace) -> int:
     print(f"[check] sddcontext {__version__}")
     print(f"[check] store backend: {cfg.store_backend}")
+    ok = True
     try:
         store = open_store(cfg)
         store.init_schema()
@@ -162,13 +163,15 @@ def cmd_check(cfg: Config, args: argparse.Namespace) -> int:
               f"symbols={store.count(SYMBOL_TABLE)} tests={store.count(TEST_TABLE)}")
         store.close()
     except Exception as error:
+        ok = False
         print(f"[check] store FAILED: {error}")
     pc = PowerContextClient(cfg.powercontext_url, cfg.work_dir)
+    pc_ok = pc.healthy()
     print(f"[check] powercontext at {cfg.powercontext_url}: "
-          f"{'healthy' if pc.healthy() else 'unreachable'}")
+          f"{'healthy' if pc_ok else 'unreachable'}")
     print(f"[check] minimax base_url={cfg.minimax_base_url} "
           f"model={cfg.minimax_model} key={'set' if cfg.minimax_api_key else 'NOT SET'}")
-    return 0
+    return 0 if ok and pc_ok else 1
 
 
 def main(argv: Optional[list] = None) -> int:
