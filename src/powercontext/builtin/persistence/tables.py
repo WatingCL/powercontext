@@ -1189,7 +1189,8 @@ SOURCE_LIFECYCLE_NODES_TABLE = Table(
     Column("kind", identity_string(16), nullable=False),
     Column("policy", identity_string(8), nullable=True),
     # Parents are ordered, small, and read as one value; JSON text keeps them portable.
-    Column("parents", _entry_text_type(), nullable=False, server_default="[]"),
+    # MySQL/seekdb rejects literals as TEXT defaults, so writers always supply parents.
+    Column("parents", _entry_text_type(), nullable=False),
     Column("ordinal", Integer, nullable=False),
     Column("available", Boolean, nullable=False),
     # Only a registered Source carries a lifecycle revision and an applied event.
