@@ -24,6 +24,18 @@ powercontext server run          # 终端 A
 bash scripts/demo.sh             # 终端 B：会新写一份 logs/demo-*.log 和 recall-eval.*
 ```
 
+## 另有一条独立证据链：CI
+
+本机是 Windows，评审未必有同样的环境，所以同一套流程在干净的 Ubuntu 上也跑：
+
+- 工作流：`.github/workflows/qoder-verify.yml`（`qoder-litcontext-verify`）
+- 步骤：装 `powercontext[cli,server]==1.5.0` → 起服务 → 20 个单测 → `scripts/demo.sh`
+  → `scripts/eval_recall.py --check`（命中@5 ≥ 0.95 且未命中率 ≤ 0.05 才放行）→ 传 Artifacts
+- 产物：整个 `evidence/` 与 `out/`，可直接下载核对，含日志与召回评测 JSON
+
+> 说明：2026-11-09 18:10Z 起 GitHub Actions 出现平台级故障（状态页标记 major outage），
+> 期间两次推送的运行在创建 job 前即失败，与本项目代码无关；此前三次运行均为 success。
+
 ## 怎么核对"记忆不在本地"
 
 1. 看 `logs/resume-after-restart.log`：该文件是**服务重启后**由新进程生成的，
