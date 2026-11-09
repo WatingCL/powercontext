@@ -248,4 +248,4 @@ bash scripts/reset.sh     # 清空本地索引（不动 PowerContext 记忆）
 | 导入 PDF 报 `需要 pypdf` | `pip install pypdf`（PDF 解析是可选的） |
 | Windows 上服务启动即退出 | 见 §1.1：删掉 `.env` 里的 `POWERCONTEXT_SERVER_MCP_*` 两行；另建议用 PowerShell / CMD 而不是 Git Bash 启动 |
 | 中文检索命中少 | 先用 `--explain` 看查询被切/扩成什么；领域词表覆盖不到的说法，在 `synonyms.py` 里加一组即可，然后用 `scripts/eval_recall.py` 回测有没有把别的查询带坏 |
-| 想确认换台机器也能跑 | 看 GitHub Actions 的 `qoder-litcontext-verify`：[run 42675737264](https://github.com/WatingCL/powercontext/actions/runs/42675737264) 在干净 Ubuntu 上装 PowerContext、起服务、跑完整流程与召回评测，13 步全绿，产物在 Artifacts |
+| 想确认换台机器也能跑 | 看 GitHub Actions 的 `qoder-litcontext-verify`：[run 42684277218](https://github.com/WatingCL/powercontext/actions/runs/42684277218) 在干净 Ubuntu 上装 PowerContext、起服务、跑完整流程与召回评测，10 个业务步骤全绿，产物在 Artifacts |
