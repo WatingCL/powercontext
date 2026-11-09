@@ -1180,6 +1180,63 @@ RECURRENCE_OBSERVATION_TABLE = Table(
 
 RECURRENCE_TABLES = (RECURRENCE_MATCH_TABLE, RECURRENCE_OBSERVATION_TABLE)
 
+SOURCE_LIFECYCLE_NODES_TABLE = Table(
+    "pc_source_lifecycle_nodes",
+    SHARED_METADATA,
+    Column("scope_id", identity_string(MAX_SCOPE_ID_LENGTH), primary_key=True),
+    Column("node_id", identity_string(128), primary_key=True),
+    # ``source`` owns an event stream; ``memory`` and ``topic`` derive from parents.
+    Column("kind", identity_string(16), nullable=False),
+    Column("policy", identity_string(8), nullable=True),
+    # Parents are ordered, small, and read as one value; JSON text keeps them portable.
+    Column("parents", _entry_text_type(), nullable=False, server_default="[]"),
+    Column("ordinal", Integer, nullable=False),
+    Column("available", Boolean, nullable=False),
+    # Only a registered Source carries a lifecycle revision and an applied event.
+    Column("source_revision", Integer, nullable=True),
+    Column("last_sequence", Integer, nullable=True),
+    Column("last_available", Boolean, nullable=True),
+    Column("last_reason", _entry_text_type(), nullable=True),
+    # Exact registered reference, split by kind so no payload codec is involved.
+    Column("source_type", identity_string(MAX_SOURCE_TYPE_LENGTH), nullable=True),
+    Column("source_id", identity_string(MAX_SOURCE_ID_LENGTH), nullable=True),
+    Column("family", identity_string(MAX_ARTIFACT_FAMILY_LENGTH), nullable=True),
+    Column("artifact_id", identity_string(MAX_ARTIFACT_ID_LENGTH), nullable=True),
+    Column("artifact_revision", Integer, nullable=True),
+    Column("entry_id", identity_string(128), nullable=True),
+    Column("entry_version_id", identity_string(128), nullable=True),
+    ForeignKeyConstraint(("scope_id",), ("pc_scopes.scope_id",), ondelete="CASCADE"),
+    CheckConstraint(
+        "kind IN ('source', 'memory', 'topic')",
+        name="ck_pc_source_lifecycle_nodes_kind",
+    ),
+    CheckConstraint(
+        "policy IS NULL OR policy IN ('all', 'any')",
+        name="ck_pc_source_lifecycle_nodes_policy",
+    ),
+    CheckConstraint("ordinal >= 0", name="ck_pc_source_lifecycle_nodes_ordinal_nonnegative"),
+    CheckConstraint(
+        "artifact_revision IS NULL OR artifact_revision > 0",
+        name="ck_pc_source_lifecycle_nodes_artifact_revision_positive",
+    ),
+)
+
+SOURCE_LIFECYCLE_EVENTS_TABLE = Table(
+    "pc_source_lifecycle_events",
+    SHARED_METADATA,
+    Column("scope_id", identity_string(MAX_SCOPE_ID_LENGTH), primary_key=True),
+    Column("node_id", identity_string(128), primary_key=True),
+    Column("sequence", Integer, primary_key=True),
+    Column("revision", Integer, nullable=False),
+    Column("available", Boolean, nullable=False),
+    Column("reason", _entry_text_type(), nullable=False),
+    ForeignKeyConstraint(("scope_id",), ("pc_scopes.scope_id",), ondelete="CASCADE"),
+    CheckConstraint("sequence > 0", name="ck_pc_source_lifecycle_events_sequence_positive"),
+    CheckConstraint("revision > 0", name="ck_pc_source_lifecycle_events_revision_positive"),
+)
+
+SOURCE_LIFECYCLE_TABLES = (SOURCE_LIFECYCLE_NODES_TABLE, SOURCE_LIFECYCLE_EVENTS_TABLE)
+
 BUILTIN_TABLES = (
     SCOPE_TABLES
     + SHARED_TABLES
@@ -1187,5 +1244,6 @@ BUILTIN_TABLES = (
     + MEMORY_TABLES
     + STATISTICS_TABLES
     + RECURRENCE_TABLES
+    + SOURCE_LIFECYCLE_TABLES
     + (ARTIFACT_TAGS_TABLE, DREAM_RUNS_TABLE, RECEIPT_MIGRATION_REVIEW_TABLE)
 )

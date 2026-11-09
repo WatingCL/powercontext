@@ -160,6 +160,11 @@ from powercontext.builtin.records import (
 )
 from powercontext.builtin.review.generation import GeneratedCandidateResult, ReviewedGenerationService
 from powercontext.builtin.review.service import ReviewService
+from powercontext.builtin.runtime.source_lifecycle import (
+    SourceLifecycleApplication,
+    SourceLifecycleService,
+    suspended_topic_filter,
+)
 from powercontext.builtin.runtime._scope_cache import (
     DEFAULT_SCOPE_CACHE_SIZE,
     ScopeCache,
@@ -3085,6 +3090,12 @@ class BuiltinRuntime:
         self._skill_usage_recorder = skill_usage_recorder
         self._experience_incubator = experience_incubator
         self._topic_memory_search = topic_memory_search
+        if topic_memory_search is not None:
+            # Withdrawn Topic revisions stay readable by exact reference but
+            # never re-enter native search while their Source is withdrawn.
+            self._topic_memory_search = suspended_topic_filter(
+                topic_memory_search, self._suspended_topic_artifacts
+            )
         self._topic_memory_get = topic_memory_get
         self._topic_memory_browse = topic_memory_browse
         self._topic_memory_flush = topic_memory_flush
@@ -3139,6 +3150,8 @@ class BuiltinRuntime:
         self.memory = MemoryApplication(self)
         self.topic_memory = TopicMemoryApplication(self)
         self.records = RecordApplication(self)
+        self._lifecycle_service: SourceLifecycleService | None = None
+        self.lifecycle = SourceLifecycleApplication(self, None)
         self.prompts = PromptApplication(self)
         self.review = ReviewApplication(self)
         self.skill = SkillApplication(self)
@@ -3173,6 +3186,20 @@ class BuiltinRuntime:
                 exc_info=error,
                 extra={"event": "source_count.wake_failed", "outcome": "deferred"},
             )
+
+    def configure_source_lifecycle(self, service: SourceLifecycleService, /) -> None:
+        """Attach the Source lifecycle service assembled by composition."""
+
+        self._lifecycle_service = service
+        self.lifecycle = SourceLifecycleApplication(self, service)
+
+    async def _suspended_topic_artifacts(self, scope_id: str, /) -> frozenset[str]:
+        """Fail-open visibility filter for Topic search when lifecycle is idle."""
+
+        service = self._lifecycle_service
+        if service is None:
+            return frozenset()
+        return await service.withdrawn_topics(scope_id)
 
     async def capabilities(self) -> RuntimeCapabilities:
         async with self._operation():
