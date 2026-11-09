@@ -25,10 +25,9 @@
 
 CI 运行记录（评审可直接点开看每一步命令与产物）：
 
-- 最绿的一次：[run 42684277218](https://github.com/WatingCL/powercontext/actions/runs/42684277218)
-  —— 提交 `2d230faa`，10 个业务步骤全部 success，耗时 51 秒，Artifacts `qoder-evidence`（483 KB）
-- 前一次同样全绿（证明可重复）：[run 42675737264](https://github.com/WatingCL/powercontext/actions/runs/42675737264)，提交 `6c201d5`
-- 工作流总览：<https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml>
+- 工作流页面：<https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml>
+- 分支头每次推送自动运行；截至本版本连续三次（`6c201d5` / `2d230faa` / `016c792c`）均 success，
+  每次 10 个业务步骤全过、约 50 秒，Artifacts `qoder-evidence`（约 483 KB）可直接下载核对
 
 ## 三、评价维度对应物
 

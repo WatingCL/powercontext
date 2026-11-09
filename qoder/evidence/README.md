@@ -33,12 +33,10 @@ bash scripts/demo.sh             # 终端 B：会新写一份 logs/demo-*.log �
   → `scripts/eval_recall.py --check`（命中@5 ≥ 0.95 且未命中率 ≤ 0.05 才放行）→ 传 Artifacts
 - 产物：整个 `evidence/` 与 `out/`，可直接下载核对，含日志与召回评测 JSON
 
-**运行记录**（连续两次全绿，可任点一次核对每一步的命令输出）：
-
-| 提交 | 运行 | 结果 |
-| --- | --- | --- |
-| `2d230faa` | [run 42684277218](https://github.com/WatingCL/powercontext/actions/runs/42684277218) | 10 个业务步骤全部 success，耗时 51 秒，Artifacts `qoder-evidence` 483 KB |
-| `6c201d5` | [run 42675737264](https://github.com/WatingCL/powercontext/actions/runs/42675737264) | 同上全绿，Artifacts 482 KB |
+**运行记录**：[Actions 工作流页面](https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml)
+按分支头倒序列出每一次运行，点开任意一次都能看到每条命令与其输出。
+截至本版本，分支 `2026-competition-ecosystem` 连续三次推送（`6c201d5` / `2d230faa` / `016c792c`）
+均为 success：10 个业务步骤全过，单次约 50 秒，Artifacts `qoder-evidence` 约 483 KB。
 
 > 一段需要说明的插曲：2026-11-09 18:10Z—18:28Z 期间 GitHub Actions 发生平台级故障
 > （状态页标记 major outage），那三次运行为 **0 job 直接失败**——job 根本没被创建，
