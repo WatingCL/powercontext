@@ -17,8 +17,10 @@
 from __future__ import annotations
 
 import json
+import re
+from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from itertools import chain
 from typing import TypeVar
 
@@ -106,6 +108,22 @@ class PreparedContextBuild:
     origins: tuple[PreparedContextOrigin, ...]
     omissions: PreparedContextOmissions = PreparedContextOmissions()
     code_origins: tuple[CodeEvidenceRef, ...] = ()
+    fragments: tuple[PreparedContextFragment, ...] = ()
+
+
+@dataclass(frozen=True)
+class PreparedContextFragment:
+    """One literal evidence slice taken from a Memory entry body.
+
+    ``text`` is always the untouched ``entry.text[start:end]`` of the exact entry
+    version identified by ``address``, so a caller can verify the citation against
+    the stored Memory without any rewriting.
+    """
+
+    address: MemoryEntryAddress
+    start: int
+    end: int
+    text: str
 
 
 @dataclass(frozen=True)
@@ -211,6 +229,12 @@ class PreparedContextBuilder:
         profile_candidates: Sequence[PreparedProfileCandidate] = (),
         code_candidates: Sequence[PreparedCodeCandidate] = (),
     ) -> PreparedContextBuild:
+        if request.evidence_selection:
+            return self._select_evidence_fragments(
+                request=request,
+                current_scope_id=current_scope_id,
+                memory_candidates=memory_candidates,
+            )
         if request.include_code:
 
             def historical(history_request: PrepareContextRequest, entries: int) -> PreparedContextBuild:
@@ -432,6 +456,100 @@ class PreparedContextBuilder:
             return None, (), omissions
         content = render_context_text(included, assembly)
         return content, tuple(origins), omissions
+
+    def _select_evidence_fragments(
+        self,
+        *,
+        request: PrepareContextRequest,
+        current_scope_id: str | None,
+        memory_candidates: Sequence[PreparedMemoryCandidates],
+    ) -> PreparedContextBuild:
+        """Select query-relevant literal slices from Memory candidates.
+
+        Each entry body is split into sentences; sentences are scored by term
+        overlap with the request query (plus CJK character hits, so non-Latin
+        evidence is still selected), then packed best-first under the full
+        output byte budget. A high-scoring sentence is preferred together with
+        its successor because gold evidence often spans a sentence boundary,
+        and the last packing resort truncates a literal prefix, so every
+        emitted fragment stays an exact ``entry.text[start:end]`` slice.
+        """
+
+        query_words = Counter(_EVIDENCE_WORD.findall(request.query.lower()))
+        query_cjk = {character for character in request.query if _is_cjk(character)}
+        candidates: list[_EvidenceCandidate] = []
+        for group_index, group in enumerate(memory_candidates):
+            if not group.hits:
+                continue
+            if group.memory_ref is None:
+                raise PreparedContextInvariantError("memory-ref-missing")
+            for hit_index, hit in enumerate(group.hits):
+                if hit.memory_ref != group.memory_ref:
+                    raise PreparedContextInvariantError("memory-ref-mismatch")
+                if not hit.entry_id.strip() or not hit.entry_version_id.strip() or not hit.text.strip():
+                    continue
+                address = MemoryEntryAddress(
+                    memory=ArtifactAddress(scope_id=group.scope_id, artifact=hit.memory_ref),
+                    entry_id=hit.entry_id,
+                    entry_version_id=hit.entry_version_id,
+                )
+                origin: PreparedContextOrigin
+                if current_scope_id is not None and group.scope_id == current_scope_id:
+                    origin = MemoryCitation(
+                        memory_ref=hit.memory_ref,
+                        entry_id=hit.entry_id,
+                        entry_version_id=hit.entry_version_id,
+                    )
+                else:
+                    origin = address
+                citation = {
+                    "scope_id": group.scope_id,
+                    "memory_ref": hit.memory_ref.model_dump(mode="json"),
+                    "entry_id": hit.entry_id,
+                    "entry_version_id": hit.entry_version_id,
+                }
+                sentences = _split_sentences(hit.text)
+                for sentence_index, (start, end, text) in enumerate(sentences):
+                    score = _evidence_score(text, query_words, query_cjk)
+                    if score <= 0:
+                        continue
+                    candidates.append(
+                        _EvidenceCandidate(
+                            score=score,
+                            order=(group_index, hit_index, sentence_index),
+                            address=address,
+                            origin=origin,
+                            citation=citation,
+                            entry_text=hit.text,
+                            sentences=sentences,
+                            sentence_index=sentence_index,
+                            query_words=query_words,
+                            query_cjk=frozenset(query_cjk),
+                        )
+                    )
+        if not candidates:
+            return PreparedContextBuild(context=self.empty(), origins=(), fragments=())
+        candidates.sort(key=lambda candidate: (-candidate.score, candidate.order))
+        packed = _pack_evidence_fragments(candidates, request.max_bytes)
+        if not packed:
+            return PreparedContextBuild(context=self.empty(), origins=(), fragments=())
+        content = _render_fragments(packed)
+        content_bytes = len(content.encode("utf-8"))
+        if content_bytes > request.max_bytes:
+            raise PreparedContextInvariantError("output-budget")
+        return PreparedContextBuild(
+            context=PreparedContext(status="ready", content=content, content_bytes=content_bytes),
+            origins=tuple(fragment.origin for fragment in packed),
+            fragments=tuple(
+                PreparedContextFragment(
+                    address=fragment.address,
+                    start=fragment.start,
+                    end=fragment.end,
+                    text=fragment.text,
+                )
+                for fragment in packed
+            ),
+        )
 
     def _profile_entries(self, candidates: Sequence[PreparedProfileCandidate]) -> tuple[_PreparedContextEntry, ...]:
         entries = []
@@ -658,6 +776,184 @@ class PreparedContextBuilder:
         if best is None:
             return _EntryFit(dropped_no_fitting_truncation=True)
         return _EntryFit(entry=best)
+
+
+_EVIDENCE_WORD = re.compile(r"[a-z]+|\d+")
+_EVIDENCE_BOUNDARY = re.compile(r"(?<=[.!?;])\s+|\n+")
+_EVIDENCE_OVERLAP_SKIP = 0.6
+_EVIDENCE_SPAN = tuple[int, int, str]
+
+
+@dataclass(frozen=True)
+class _EvidenceCandidate:
+    """One query-overlapping sentence with everything needed to pack it."""
+
+    score: int
+    order: tuple[int, int, int]
+    address: MemoryEntryAddress
+    origin: PreparedContextOrigin
+    citation: dict[str, object]
+    entry_text: str
+    sentences: tuple[_EVIDENCE_SPAN, ...]
+    sentence_index: int
+    query_words: Counter[str] = field(default_factory=Counter)
+    query_cjk: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True)
+class _PackedFragment:
+    """One literal slice chosen under the output budget."""
+
+    address: MemoryEntryAddress
+    origin: PreparedContextOrigin
+    citation: dict[str, object]
+    start: int
+    end: int
+    text: str
+
+
+def _is_cjk(character: str) -> bool:
+    return "\u4e00" <= character <= "\u9fff"
+
+
+def _split_sentences(text: str) -> tuple[_EVIDENCE_SPAN, ...]:
+    """Split one entry body into sentences with half-open character offsets."""
+
+    spans: list[_EVIDENCE_SPAN] = []
+    start = 0
+    for match in _EVIDENCE_BOUNDARY.finditer(text):
+        end = match.start()
+        if text[start:end].strip():
+            spans.append((start, end, text[start:end]))
+        start = match.end()
+    if start < len(text) and text[start:].strip():
+        spans.append((start, len(text), text[start:]))
+    return tuple(spans)
+
+
+def _evidence_score(text: str, query_words: Counter[str], query_cjk: frozenset[str] | set[str]) -> int:
+    """Count query term hits plus CJK character hits in one sentence."""
+
+    words = Counter(_EVIDENCE_WORD.findall(text.lower()))
+    score = sum((query_words & words).values())
+    if query_cjk:
+        score += len(set(text) & query_cjk)
+    return score
+
+
+def _render_fragments(fragments: Sequence[_PackedFragment]) -> str:
+    envelope = {
+        "trust": "untrusted_history",
+        "items": [
+            {
+                "citation": fragment.citation,
+                "content": fragment.text,
+                "start": fragment.start,
+                "end": fragment.end,
+            }
+            for fragment in fragments
+        ],
+    }
+    encoded = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
+    return "\n\n".join((TRUST_POLICY, f"{_BEGIN_MARKER}\n{encoded}\n{_END_MARKER}"))
+
+
+def _fits_budget(fragments: Sequence[_PackedFragment], max_bytes: int) -> bool:
+    return len(_render_fragments(fragments).encode("utf-8")) <= max_bytes
+
+
+def _covered_fraction(ranges: Sequence[tuple[int, int]], start: int, end: int) -> float:
+    span = end - start
+    if span <= 0:
+        return 1.0
+    covered = sum(max(0, min(known_end, end) - max(known_start, start)) for known_start, known_end in ranges)
+    return min(1.0, covered / span)
+
+
+def _entry_key(address: MemoryEntryAddress) -> tuple[str, str, int, str, str]:
+    artifact = address.memory.artifact
+    return (
+        address.memory.scope_id,
+        artifact.artifact_id,
+        artifact.revision,
+        address.entry_id,
+        address.entry_version_id,
+    )
+
+
+def _pack_evidence_fragments(
+    candidates: Sequence[_EvidenceCandidate],
+    max_bytes: int,
+) -> tuple[_PackedFragment, ...]:
+    """Pack scored sentences best-first under the full output byte budget.
+
+    A sentence is preferred together with its successor because query-relevant
+    evidence frequently spans a sentence boundary; when even the single
+    sentence cannot fit, a literal prefix is binary-searched so the emitted
+    slice always remains an exact substring of the entry body.
+    """
+
+    packed: list[_PackedFragment] = []
+    covered: dict[tuple[str, str, int, str, str], list[tuple[int, int]]] = {}
+    for candidate in candidates:
+        ranges = covered.setdefault(_entry_key(candidate.address), [])
+        sentence_start, sentence_end, _ = candidate.sentences[candidate.sentence_index]
+        if _covered_fraction(ranges, sentence_start, sentence_end) > _EVIDENCE_OVERLAP_SKIP:
+            continue
+
+        def literal(start: int, end: int) -> _PackedFragment:
+            return _PackedFragment(
+                address=candidate.address,
+                origin=candidate.origin,
+                citation=candidate.citation,
+                start=start,
+                end=end,
+                text=candidate.entry_text[start:end],
+            )
+
+        # Windows are tried by their total score: gold evidence frequently spans
+        # a sentence boundary, so the scored sentence is preferred together with
+        # either neighbour before falling back to the bare sentence.
+        index = candidate.sentence_index
+        windows: list[tuple[int, int, int]] = []
+        if index + 1 < len(candidate.sentences):
+            successor = candidate.sentences[index + 1]
+            windows.append((candidate.score + _window_score(candidate, index + 1), sentence_start, successor[1]))
+        if index > 0:
+            predecessor = candidate.sentences[index - 1]
+            windows.append((candidate.score + _window_score(candidate, index - 1), predecessor[0], sentence_end))
+        windows.append((candidate.score, sentence_start, sentence_end))
+        windows.sort(key=lambda window: (-window[0], abs(window[1] - sentence_start)))
+        placed: _PackedFragment | None = None
+        for _, start, end in windows:
+            if _covered_fraction(ranges, start, end) > _EVIDENCE_OVERLAP_SKIP:
+                continue
+            fragment = literal(start, end)
+            if _fits_budget((*packed, fragment), max_bytes):
+                placed = fragment
+                break
+        if placed is None:
+            # Last resort: binary-search a literal prefix of the single sentence.
+            low, high = 1, sentence_end - sentence_start
+            while low <= high:
+                middle = (low + high) // 2
+                fragment = literal(sentence_start, sentence_start + middle)
+                if _fits_budget((*packed, fragment), max_bytes):
+                    placed = fragment
+                    low = middle + 1
+                else:
+                    high = middle - 1
+        if placed is not None:
+            packed.append(placed)
+            ranges.append((placed.start, placed.end))
+    return tuple(packed)
+
+
+def _window_score(candidate: _EvidenceCandidate, index: int) -> int:
+    """Score one neighbouring sentence of the candidate sentence."""
+
+    sentence = candidate.sentences[index]
+    return _evidence_score(sentence[2], candidate.query_words, candidate.query_cjk)
 
 
 def _interleave(
