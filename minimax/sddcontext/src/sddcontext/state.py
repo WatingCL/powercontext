@@ -17,7 +17,8 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener, urlopen
+from urllib.parse import urlparse
 
 STATE_PREFIX = "SDD-TASK-STATE"
 SCOPE_CACHE = "scope_id.txt"
@@ -25,6 +26,18 @@ SCOPE_CACHE = "scope_id.txt"
 
 class PowerContextError(RuntimeError):
     pass
+
+
+def _opener_for(url: str):
+    """Bypass HTTP(S)_PROXY for loopback targets (local PowerContext server).
+
+    Corporate/agent proxy environment variables would otherwise route
+    127.0.0.1 traffic through an unrelated proxy and break local calls.
+    """
+    host = (urlparse(url).hostname or "").lower()
+    if host in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+        return build_opener(ProxyHandler({}))
+    return build_opener()
 
 
 class PowerContextClient:
@@ -44,7 +57,7 @@ class PowerContextClient:
             method=method,
         )
         try:
-            with urlopen(request, timeout=self.timeout) as response:
+            with _opener_for(f"{self.base_url}{path}").open(request, timeout=self.timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as error:  # pragma: no cover - network detail
             detail = error.read().decode("utf-8", errors="replace")[:500]
@@ -148,7 +161,7 @@ class PowerContextClient:
             )
         except PowerContextError:
             result = {}
-        for key in ("entries", "items", "results", "memories"):
+        for key in ("entries", "hits", "items", "results", "memories"):
             entries = result.get(key)
             if isinstance(entries, list):
                 state = self._parse_state_entries(entries, task_id)
