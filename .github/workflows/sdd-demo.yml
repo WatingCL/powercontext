@@ -23,6 +23,7 @@ env:
   POWERCONTEXT_URL: http://127.0.0.1:8000
   MINIMAX_BASE_URL: https://api.minimaxi.com/v1
   MINIMAX_MODEL: ${{ secrets.MINIMAX_MODEL || 'MiniMax-M2' }}
+  HAS_MINIMAX_KEY: ${{ secrets.MINIMAX_API_KEY != '' }}
 
 jobs:
   demo:
@@ -101,26 +102,26 @@ jobs:
           PYTHONPATH: sddcontext/src
 
       - name: Implement with MiniMax
-        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        if: env.HAS_MINIMAX_KEY == 'true'
         run: python -m sddcontext implement --task project/tasks/001-add-status-filter.md
         env:
           PYTHONPATH: sddcontext/src
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
 
       - name: Skip notice when no MiniMax key configured
-        if: ${{ secrets.MINIMAX_API_KEY == '' }}
+        if: env.HAS_MINIMAX_KEY != 'true'
         run: |
           echo "::warning::MINIMAX_API_KEY secret not configured - implement step skipped."
           echo "Add the repository secret MINIMAX_API_KEY to run the full flow."
 
       - name: Post-change tests (all must PASS)
-        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        if: env.HAS_MINIMAX_KEY == 'true'
         run: python -m sddcontext verify --label post
         env:
           PYTHONPATH: sddcontext/src
 
       - name: Save task state to PowerContext
-        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        if: env.HAS_MINIMAX_KEY == 'true'
         run: |
           python -m sddcontext state save --task project/tasks/001-add-status-filter.md --json '{
             "title": "为任务列表增加状态筛选",
@@ -133,7 +134,7 @@ jobs:
           PYTHONPATH: sddcontext/src
 
       - name: Restart PowerContext server and recall state
-        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        if: env.HAS_MINIMAX_KEY == 'true'
         run: |
           kill "$(cat powercontext.pid)" || true
           sleep 3
@@ -165,7 +166,7 @@ jobs:
           PYTHONPATH: sddcontext/src
 
       - name: Git diff of the MiniMax change
-        if: ${{ secrets.MINIMAX_API_KEY != '' }}
+        if: env.HAS_MINIMAX_KEY == 'true'
         run: |
           git diff --stat
           git diff > evidence/logs/minimax-change.diff

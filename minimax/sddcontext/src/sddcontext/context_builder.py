@@ -58,6 +58,10 @@ def build_context(cfg: Config, store: BaseStore, task_path: Path,
         except Exception as error:  # server down etc.
             state_error = str(error)
 
+    # display paths relative to the repo (prefix the project dir name) so
+    # evaluators can locate the file directly from the repo root
+    project_prefix = cfg.project_dir.resolve().name
+
     context: Dict[str, Any] = {
         "task": task.summary(),
         "retrieval": {"terms": terms, "backend": cfg.store_backend},
@@ -67,7 +71,7 @@ def build_context(cfg: Config, store: BaseStore, task_path: Path,
                 "spec_id": s["spec_id"],
                 "title": s["title"],
                 "content": s["content"],
-                "source_file": s["file"],
+                "source_file": f"{project_prefix}/{s['file']}",
                 "content_hash": s["content_hash"],
             }
             for s in specs
@@ -77,7 +81,7 @@ def build_context(cfg: Config, store: BaseStore, task_path: Path,
                 "symbol": s["symbol"],
                 "qualname": s["qualname"],
                 "kind": s["kind"],
-                "file": s["file"],
+                "file": f"{project_prefix}/{s['file']}",
                 "line": s["line"],
                 "signature": s["signature"],
                 "docstring": s["docstring"],
@@ -87,7 +91,7 @@ def build_context(cfg: Config, store: BaseStore, task_path: Path,
         "tests": [
             {
                 "test_name": t["test_name"],
-                "file": t["file"],
+                "file": f"{project_prefix}/{t['file']}",
                 "role": t["role"],
                 "docstring": t["docstring"],
             }
