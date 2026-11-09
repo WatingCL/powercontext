@@ -489,6 +489,7 @@ class ScopedSourceApplication:
                             span.set_attributes({_MEMORY_CAPTURE_SOURCE_COUNT: 1})
             except BaseValueConflictError as error:
                 raise SourceConflictError("identity", error.identity) from None
+            self._runtime._wake_source_count()
             return SourceReceipt(
                 source_ref=SourceRef(source_type=record.source_type, source_id=record.source_id),
                 sequence=record.position,
@@ -505,6 +506,7 @@ class ScopedSourceApplication:
                 )
                 if span is not None:
                     span.set_attributes({_MEMORY_CAPTURE_SOURCE_COUNT: 1})
+            self._runtime._wake_source_count()
             return SourceReceipt(source_ref=context.sources.catalog.as_ref(source), sequence=sequence)
 
 
@@ -532,11 +534,13 @@ class ScopedRecordApplication:
         /,
     ) -> SourceRecord:
         async with self._runtime._scope_operation(self.scope_id), self._runtime._locked(self.scope_id):
-            return await self._runtime._records().create_source(
+            created = await self._runtime._records().create_source(
                 self.scope_id,
                 source_type,
                 content,
             )
+        self._runtime._wake_source_count()
+        return created
 
     async def get_source(self, source_type: str, source_id: str, /) -> SourceRecord:
         async with self._runtime._scope_operation(self.scope_id):
@@ -564,7 +568,9 @@ class ScopedRecordApplication:
         /,
     ) -> ArtifactCreated:
         async with self._runtime._scope_operation(self.scope_id), self._runtime._locked(self.scope_id):
-            return await self._runtime._records().create_artifact(self.scope_id, family, write)
+            created = await self._runtime._records().create_artifact(self.scope_id, family, write)
+        self._runtime._wake_source_count()
+        return created
 
     async def get_artifact(self, family: str, artifact_id: str, /) -> ArtifactRecord:
         async with self._runtime._scope_operation(self.scope_id):
@@ -3150,6 +3156,23 @@ class BuiltinRuntime:
 
     async def __aexit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
         await self.close()
+
+    def _wake_source_count(self) -> None:
+        """Let count-thresholded Families re-check their journal identities."""
+
+        supervisor = self.artifact_processing_supervisor
+        if supervisor is None:
+            return
+        try:
+            supervisor.wake_source_count()
+        except Exception as error:
+            log_safely(
+                logger,
+                logging.WARNING,
+                "Source count supervisor wake failed after journal growth",
+                exc_info=error,
+                extra={"event": "source_count.wake_failed", "outcome": "deferred"},
+            )
 
     async def capabilities(self) -> RuntimeCapabilities:
         async with self._operation():

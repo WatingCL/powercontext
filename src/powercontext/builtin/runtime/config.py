@@ -135,6 +135,21 @@ class RuntimeConfig(BaseModel):
             raise ValueError("Worker quota must be a positive integer")  # noqa: TRY003, TRY004 - Pydantic validation
         return value
 
+    @field_validator(
+        "memory_source_count_threshold",
+        "topic_memory_source_count_threshold",
+        mode="before",
+    )
+    @classmethod
+    def reject_loose_source_count_threshold(cls, value: Any) -> Any:
+        # A count threshold is an exact journal identity budget: booleans,
+        # floats, strings, zero and negative values must never coerce.
+        if value is None:
+            return None
+        if type(value) is not int or value < 1:
+            raise ValueError("Source count threshold must be a positive integer")  # noqa: TRY003
+        return value
+
     scope_cache_size: int = Field(default=DEFAULT_SCOPE_CACHE_SIZE, ge=1)
     source_window_limit: int = Field(default=100, ge=1)
     context_assembly_max_entries: int = Field(default=8, ge=1)
@@ -201,6 +216,8 @@ class RuntimeConfig(BaseModel):
 
     schedule_seconds: float | None = Field(default=None, gt=0)
     memory_schedule_seconds: float | None = Field(default=None, gt=0)
+    memory_source_count_threshold: int | None = Field(default=None, ge=1)
+    topic_memory_source_count_threshold: int | None = Field(default=None, ge=1)
     experience_schedule_seconds: float | None = Field(default=None, gt=0)
     dream_enabled: bool = True
     dream_max_pending_per_scope: int = Field(default=32, ge=1, le=1000)
