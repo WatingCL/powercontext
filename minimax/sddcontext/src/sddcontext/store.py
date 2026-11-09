@@ -129,6 +129,9 @@ class _MySQLDialectStore(BaseStore):
     def _cursor(self):
         return self.conn.cursor()
 
+    def _commit(self) -> None:
+        self.conn.commit()
+
     def init_schema(self) -> None:
         ddl = [
             f"""CREATE TABLE IF NOT EXISTS {SPEC_TABLE} (
@@ -173,7 +176,7 @@ class _MySQLDialectStore(BaseStore):
                 # Engine without FULLTEXT support on this shape keeps working
                 # through the LIKE fallback in BaseStore.search.
                 pass
-        self.conn.commit()
+        self._commit()
         cur.close()
 
     def replace_rows(self, table: str, rows: List[Dict[str, Any]]) -> None:
@@ -187,7 +190,7 @@ class _MySQLDialectStore(BaseStore):
             cur.executemany(
                 f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})", payload
             )
-        self.conn.commit()
+        self._commit()
         cur.close()
 
     def fetch_all(self, table: str, where: str = "", params: Sequence[Any] = (),
@@ -210,6 +213,48 @@ class _MySQLDialectStore(BaseStore):
                 self._conn.close()
             finally:
                 self._conn = None
+
+
+class _LiteralCursor:
+    """Cursor wrapper for engines without DB-API parameter binding.
+
+    pylibseekdb's ``execute()`` accepts a single SQL string only
+    (``execute(self, sql: str) -> int``), so ``%s`` placeholders are
+    replaced with safely escaped SQL literals before delegation.
+    ``executemany`` is emulated with per-row execution.
+    """
+
+    def __init__(self, cur: Any) -> None:
+        self._cur = cur
+
+    @staticmethod
+    def _lit(value: Any) -> str:
+        if value is None:
+            return "NULL"
+        if isinstance(value, bool):
+            return "1" if value else "0"
+        if isinstance(value, (int, float)):
+            return repr(value)
+        text = str(value).replace("\\", "\\\\").replace("'", "''")
+        return f"'{text}'"
+
+    def execute(self, sql: str, params: Sequence[Any] = ()) -> Any:
+        if params:
+            sql = sql % tuple(self._lit(p) for p in params)
+        return self._cur.execute(sql)
+
+    def executemany(self, sql: str, payload: Sequence[Sequence[Any]]) -> None:
+        for row in payload:
+            self.execute(sql, row)
+
+    def fetchall(self) -> Any:
+        return self._cur.fetchall()
+
+    def close(self) -> None:
+        try:
+            self._cur.close()
+        except Exception:
+            pass
 
 
 class SeekdbEmbeddedStore(_MySQLDialectStore):
@@ -240,6 +285,26 @@ class SeekdbEmbeddedStore(_MySQLDialectStore):
             return seekdb.connect()
         except TypeError:
             return seekdb.connect(self.cfg.seekdb_path)
+
+    def _cursor(self):
+        # no parameter binding in pylibseekdb -> inline escaped literals
+        return _LiteralCursor(self.conn.cursor())
+
+    def _commit(self) -> None:
+        # embedded engine may auto-commit; tolerate missing commit()
+        try:
+            self.conn.commit()
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+            finally:
+                self._conn = None
 
 
 class MySQLStore(_MySQLDialectStore):

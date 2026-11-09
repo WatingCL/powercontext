@@ -136,3 +136,33 @@ def test_store_search_returns_matching_rows(cfg):
     assert hits, "search should return candidate rows"
     assert any("status" in (r["title"] + r["content"]) or "筛选" in r["title"] for r in hits)
     store.close()
+
+
+class TestLiteralCursor:
+    """pylibseekdb has no DB-API parameter binding; verify SQL literal inlining."""
+
+    def test_literal_escaping(self):
+        from sddcontext.store import _LiteralCursor
+
+        class _FakeCur:
+            def __init__(self):
+                self.sql = None
+
+            def execute(self, sql):
+                self.sql = sql
+                return 0
+
+            def fetchall(self):
+                return []
+
+            def close(self):
+                pass
+
+        fake = _FakeCur()
+        cur = _LiteralCursor(fake)
+        cur.execute("SELECT * FROM t WHERE a = %s AND b = %s", ("O'Brien", 42))
+        assert fake.sql == "SELECT * FROM t WHERE a = 'O''Brien' AND b = 42"
+        cur.execute("DELETE FROM t")
+        assert fake.sql == "DELETE FROM t"
+        cur.executemany("INSERT INTO t VALUES (%s)", [("x",), ("y'y",)])
+        assert fake.sql == "INSERT INTO t VALUES ('y''y')"
