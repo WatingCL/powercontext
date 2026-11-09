@@ -23,6 +23,9 @@
 | 3. Qoder 开发可核对 | 录屏里应有 Qoder 账号 UID、五个会话、以及 `pc.py` / `memory.py` / `synonyms.py` 的生成过程 | 【待填】 |
 | 4. 技术结合有效 | 记忆读写记录：`evidence/logs/demo-*.log`、`evidence/logs/doctor.log`；召回：`evidence/recall-eval.md` | ✅ |
 
+CI 运行记录（评审可直接点开看每一步命令与产物）：
+<https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml>
+
 ## 三、评价维度对应物
 
 | 维度 | 本作品的对应物 | 需要提醒自己的地方 |
