@@ -1,0 +1,27 @@
+{
+  "name": "stepfun-mini-kb",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "端侧向量化 + seekdb 混合检索的迷你知识库（seekdb × 阶跃星辰赛题）",
+  "scripts": {
+    "dev": "concurrently -n api,web -c green,blue \"node server/index.mjs\" \"vite\"",
+    "start": "node server/index.mjs",
+    "build": "vite build",
+    "setup:model": "node scripts/fetch-model.mjs",
+    "eval": "node scripts/eval.mjs",
+    "reset": "node scripts/reset.mjs",
+    "postinstall": "node scripts/setup-ort.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.5",
+    "@oceanbase/seekdb-node": "^1.4.0",
+    "@oceanbase/seekdb-node-win32-x64": "^1.4.0",
+    "express": "^4.21.2",
+    "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "vite": "^6.3.5"
+  }
+}

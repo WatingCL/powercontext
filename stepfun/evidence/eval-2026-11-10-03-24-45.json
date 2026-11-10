@@ -1,0 +1,461 @@
+{
+  "at": "2026-11-10T03:24:45.966Z",
+  "device": "CPU (onnxruntime-node, 与浏览器 WASM 同一份 ONNX 权重)",
+  "note": "浏览器端 WebGPU 的耗时另见 evidence/browser-bench.json；本文件只比较质量与体积",
+  "modelSizesMB": {
+    "model.onnx": 90.46,
+    "model_fp16.onnx": 45.3,
+    "model_int8.onnx": 22.8
+  },
+  "compression": {
+    "fp32/int8": 3.97,
+    "fp32/fp16": 2
+  },
+  "fidelity": {
+    "fp32 vs int8 平均余弦": 0.94852,
+    "fp32 vs fp16 平均余弦": 1
+  },
+  "configs": [
+    {
+      "dtype": "fp32",
+      "model": "bge-small-zh-v1.5",
+      "loadMs": 233,
+      "embedMs": 1034,
+      "chunks": 47,
+      "docs": 12,
+      "throughput": 45.45,
+      "recallAt5": 1,
+      "ndcgAt10": 0.9385,
+      "mrr": 0.9167,
+      "dbMedianMs": 7,
+      "detail": [
+        {
+          "id": "q1",
+          "query": "阈值法为什么会漏掉小功率电器的开关",
+          "gold": [
+            "nilm-03-阈值法事件检测.md"
+          ],
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q2",
+          "query": "两台功率接近的电器同时动作为什么检测不到",
+          "gold": [
+            "nilm-03-阈值法事件检测.md"
+          ],
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q3",
+          "query": "CUSUM 累积和怎么做变点检测",
+          "gold": [
+            "nilm-04-CUSUM与GLR.md"
+          ],
+          "top1": "nilm-04-CUSUM与GLR.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q4",
+          "query": "采样率有哪几档，低频采集会丢掉什么信息",
+          "gold": [
+            "nilm-02-采集与采样率.md"
+          ],
+          "top1": "nilm-02-采集与采样率.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q5",
+          "query": "V-I 轨迹为什么能区分不同负载",
+          "gold": [
+            "nilm-05-负荷特征.md"
+          ],
+          "top1": "nilm-05-负荷特征.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q6",
+          "query": "NILM 应该报告哪些评价指标",
+          "gold": [
+            "nilm-06-评价指标.md"
+          ],
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q7",
+          "query": "端侧推理有什么代价，首次加载慢怎么办",
+          "gold": [
+            "edge-01-端侧推理的动机与代价.md"
+          ],
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q8",
+          "query": "WebGPU 不可用时怎么降级到 WASM",
+          "gold": [
+            "edge-02-WebGPU与WASM后端选择.md"
+          ],
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q9",
+          "query": "INT8 动态量化的压缩比和精度损失",
+          "gold": [
+            "edge-03-模型量化INT8与FP16.md"
+          ],
+          "top1": "edge-03-模型量化INT8与FP16.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q10",
+          "query": "混合检索里向量和全文的权重怎么调",
+          "gold": [
+            "db-01-seekdb混合检索.md"
+          ],
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q11",
+          "query": "HNSW 的 ef_search 参数怎么影响召回和延迟",
+          "gold": [
+            "db-02-向量索引HNSW参数.md"
+          ],
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q12",
+          "query": "导入新文档后为什么搜不到，索引要刷新吗",
+          "gold": [
+            "db-03-增量写入与索引刷新.md"
+          ],
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        }
+      ]
+    },
+    {
+      "dtype": "int8",
+      "model": "bge-small-zh-v1.5",
+      "loadMs": 89,
+      "embedMs": 615,
+      "chunks": 47,
+      "docs": 12,
+      "throughput": 76.42,
+      "recallAt5": 1,
+      "ndcgAt10": 0.9385,
+      "mrr": 0.9167,
+      "dbMedianMs": 8,
+      "detail": [
+        {
+          "id": "q1",
+          "query": "阈值法为什么会漏掉小功率电器的开关",
+          "gold": [
+            "nilm-03-阈值法事件检测.md"
+          ],
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q2",
+          "query": "两台功率接近的电器同时动作为什么检测不到",
+          "gold": [
+            "nilm-03-阈值法事件检测.md"
+          ],
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q3",
+          "query": "CUSUM 累积和怎么做变点检测",
+          "gold": [
+            "nilm-04-CUSUM与GLR.md"
+          ],
+          "top1": "nilm-04-CUSUM与GLR.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q4",
+          "query": "采样率有哪几档，低频采集会丢掉什么信息",
+          "gold": [
+            "nilm-02-采集与采样率.md"
+          ],
+          "top1": "nilm-02-采集与采样率.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q5",
+          "query": "V-I 轨迹为什么能区分不同负载",
+          "gold": [
+            "nilm-05-负荷特征.md"
+          ],
+          "top1": "nilm-05-负荷特征.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q6",
+          "query": "NILM 应该报告哪些评价指标",
+          "gold": [
+            "nilm-06-评价指标.md"
+          ],
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q7",
+          "query": "端侧推理有什么代价，首次加载慢怎么办",
+          "gold": [
+            "edge-01-端侧推理的动机与代价.md"
+          ],
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q8",
+          "query": "WebGPU 不可用时怎么降级到 WASM",
+          "gold": [
+            "edge-02-WebGPU与WASM后端选择.md"
+          ],
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q9",
+          "query": "INT8 动态量化的压缩比和精度损失",
+          "gold": [
+            "edge-03-模型量化INT8与FP16.md"
+          ],
+          "top1": "edge-03-模型量化INT8与FP16.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q10",
+          "query": "混合检索里向量和全文的权重怎么调",
+          "gold": [
+            "db-01-seekdb混合检索.md"
+          ],
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q11",
+          "query": "HNSW 的 ef_search 参数怎么影响召回和延迟",
+          "gold": [
+            "db-02-向量索引HNSW参数.md"
+          ],
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q12",
+          "query": "导入新文档后为什么搜不到，索引要刷新吗",
+          "gold": [
+            "db-03-增量写入与索引刷新.md"
+          ],
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        }
+      ]
+    },
+    {
+      "dtype": "fp16",
+      "model": "bge-small-zh-v1.5",
+      "loadMs": 128,
+      "embedMs": 1989,
+      "chunks": 47,
+      "docs": 12,
+      "throughput": 23.63,
+      "recallAt5": 1,
+      "ndcgAt10": 0.9385,
+      "mrr": 0.9167,
+      "dbMedianMs": 7,
+      "detail": [
+        {
+          "id": "q1",
+          "query": "阈值法为什么会漏掉小功率电器的开关",
+          "gold": [
+            "nilm-03-阈值法事件检测.md"
+          ],
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q2",
+          "query": "两台功率接近的电器同时动作为什么检测不到",
+          "gold": [
+            "nilm-03-阈值法事件检测.md"
+          ],
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q3",
+          "query": "CUSUM 累积和怎么做变点检测",
+          "gold": [
+            "nilm-04-CUSUM与GLR.md"
+          ],
+          "top1": "nilm-04-CUSUM与GLR.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q4",
+          "query": "采样率有哪几档，低频采集会丢掉什么信息",
+          "gold": [
+            "nilm-02-采集与采样率.md"
+          ],
+          "top1": "nilm-02-采集与采样率.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q5",
+          "query": "V-I 轨迹为什么能区分不同负载",
+          "gold": [
+            "nilm-05-负荷特征.md"
+          ],
+          "top1": "nilm-05-负荷特征.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q6",
+          "query": "NILM 应该报告哪些评价指标",
+          "gold": [
+            "nilm-06-评价指标.md"
+          ],
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q7",
+          "query": "端侧推理有什么代价，首次加载慢怎么办",
+          "gold": [
+            "edge-01-端侧推理的动机与代价.md"
+          ],
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q8",
+          "query": "WebGPU 不可用时怎么降级到 WASM",
+          "gold": [
+            "edge-02-WebGPU与WASM后端选择.md"
+          ],
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q9",
+          "query": "INT8 动态量化的压缩比和精度损失",
+          "gold": [
+            "edge-03-模型量化INT8与FP16.md"
+          ],
+          "top1": "edge-03-模型量化INT8与FP16.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q10",
+          "query": "混合检索里向量和全文的权重怎么调",
+          "gold": [
+            "db-01-seekdb混合检索.md"
+          ],
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q11",
+          "query": "HNSW 的 ef_search 参数怎么影响召回和延迟",
+          "gold": [
+            "db-02-向量索引HNSW参数.md"
+          ],
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q12",
+          "query": "导入新文档后为什么搜不到，索引要刷新吗",
+          "gold": [
+            "db-03-增量写入与索引刷新.md"
+          ],
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        }
+      ]
+    }
+  ]
+}

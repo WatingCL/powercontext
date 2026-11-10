@@ -1,0 +1,10 @@
+node_modules/
+dist/
+public/models/
+public/ort/
+data/seekdb/
+.spike-db/
+*.part
+*.log
+.DS_Store
+src/ort/

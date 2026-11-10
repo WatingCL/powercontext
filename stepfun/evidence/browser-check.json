@@ -1,0 +1,11 @@
+{
+  "at": "2026-11-10T03:50:38.810Z",
+  "backend": "WebGPU · FP16",
+  "reason": "自动：检测到 WebGPU，使用 FP16 权重｜适配器：intel / gen-12lp",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+  "importLog": "[11:50:32] seekdb 就绪：5.7.25-OceanBase seekdb-v1.4.0.0，启动 2302ms，目录 D:\\stepfun-kb-data\\seekdb\n[11:50:32] 项目路径含中文，原生层无法打开，已降级到纯英文路径（可用 SEEKDB_DIR 覆盖）\n[11:50:32] 已自动创建默认集合 kb-default\n[11:50:33] WebGPU 检测：可用（navigator.gpu 可用，适配器 intel / gen-12lp）\n[11:50:33] 推理后端：WEBGPU / FP16（自动：检测到 WebGPU，使用 FP16 权重）\n[11:50:33] 加载 tokenizer.json 31%\n[11:50:33] 加载 tokenizer.json 46%\n[11:50:33] 加载 tokenizer.json 61%\n[11:50:33] 加载 tokenizer_config.json 100%\n[11:50:33] 加载 tokenizer.json 90%\n[11:50:33] 加载 tokenizer.json 100%\n[11:50:33] 加载 config.json 100%\n[11:50:33] 加载 model_fp16.onnx 1%\n[11:50:33] 加载 model_fp16.onnx 11%\n[11:50:33] 加载 model_fp16.onnx 21%\n[11:50:33] 加载 model_fp16.onnx 31%\n[11:50:33] 加载 model_fp16.onnx 41%\n[11:50:33] 加载 model_fp16.onnx 51%\n[11:50:33] 加载 model_fp16.onnx 61%\n[11:50:33] 加载 model_fp16.onnx 71%\n[11:50:33] 加载 model_fp16.onnx 81%\n[11:50:33] 加载 model_fp16.onnx 91%\n[11:50:33] 加载 model_fp16.onnx 100%\n[11:50:33] 加载 model_fp16.onnx 100%\n[11:50:33] 加载 model_fp16.onnx 100%\n[11:50:33] 加载 model_fp16.onnx 100%\n[11:50:35] 载入示例语料 12 篇\n[11:50:35] 分块完成：12 篇 → 47 块（320 字/块，重叠 60 字）\n[11:50:36] 向量化完成：47 块 / 1.12s（41.8 块/秒）\n[11:50:37] 写入完成：47 块，库内共 47 块｜写入 255ms，索引刷新 552ms\n[11:50:37] 端到端导入 1.97s（含向量化 1.12s）",
+  "stats": "12 篇 / 47 块",
+  "searchTimings": "查询向量化 24.4ms seekdb 检索 22ms 端到端 52.4ms 命中 10 / 库内 47 块 路径 DBMS_HYBRID_SEARCH.SEARCH",
+  "firstHit": "负荷特征：从功率台阶到 V-I 轨迹",
+  "bench": "[11:50:38] 基准完成（中位数 端到端 35.2ms，库内检索 7ms），已写入 evidence/browser-bench.json"
+}

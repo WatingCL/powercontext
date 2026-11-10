@@ -1,0 +1,56 @@
+[
+  {
+    "at": "2026-11-10T03:49:54.974Z",
+    "backend": "WebGPU · FP16",
+    "device": "webgpu",
+    "dtype": "fp16",
+    "adapter": "intel / gen-12lp",
+    "query": "冰箱启动的功率增量大概是多少",
+    "topK": 8,
+    "chunks": 49,
+    "loadMs": 705,
+    "warmMs": 331,
+    "embedPlusDbMedianMs": 29.6,
+    "dbMedianMs": 8,
+    "all": [
+      37.6,
+      29.9,
+      30.3,
+      28.4,
+      27.7,
+      29.6,
+      27.9,
+      27.9,
+      29.2,
+      29.9
+    ],
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+  },
+  {
+    "at": "2026-11-10T03:50:38.138Z",
+    "backend": "WebGPU · FP16",
+    "device": "webgpu",
+    "dtype": "fp16",
+    "adapter": "intel / gen-12lp",
+    "query": "冰箱启动的功率增量大概是多少",
+    "topK": 8,
+    "chunks": 47,
+    "loadMs": 756,
+    "warmMs": 321,
+    "embedPlusDbMedianMs": 35.2,
+    "dbMedianMs": 7,
+    "all": [
+      36.7,
+      31.1,
+      34.3,
+      36.2,
+      34.6,
+      34.4,
+      37.1,
+      34.3,
+      35.2,
+      38.3
+    ],
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+  }
+]

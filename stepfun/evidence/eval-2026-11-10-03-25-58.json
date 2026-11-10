@@ -1,0 +1,464 @@
+{
+  "at": "2026-11-10T03:25:58.214Z",
+  "device": "CPU (onnxruntime-node, 与浏览器 WASM 同一份 ONNX 权重)",
+  "note": "浏览器端 WebGPU 的耗时另见 evidence/browser-bench.json；本文件只比较质量与体积",
+  "modelSizesMB": {
+    "model.onnx": 90.46,
+    "model_fp16.onnx": 45.3,
+    "model_int8.onnx": 22.8
+  },
+  "compression": {
+    "fp32/int8": 3.97,
+    "fp32/fp16": 2
+  },
+  "fidelity": {
+    "fp32 vs int8 平均余弦": 0.94852,
+    "fp32 vs fp16 平均余弦": 1
+  },
+  "configs": [
+    {
+      "dtype": "fp32",
+      "model": "bge-small-zh-v1.5",
+      "loadMs": 185,
+      "embedMs": 1150,
+      "chunks": 47,
+      "docs": 12,
+      "throughput": 40.87,
+      "hybrid": {
+        "recallAt5": 1,
+        "ndcgAt10": 0.959,
+        "mrr": 0.9444
+      },
+      "vectorOnly": {
+        "recallAt5": 1,
+        "ndcgAt10": 0.9795,
+        "mrr": 0.9722
+      },
+      "dbMedianMs": 7,
+      "detail": [
+        {
+          "id": "q1",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q2",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q3",
+          "top1": "nilm-04-CUSUM与GLR.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q4",
+          "top1": "nilm-02-采集与采样率.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q5",
+          "top1": "nilm-05-负荷特征.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q6",
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q7",
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q8",
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q9",
+          "top1": "edge-03-模型量化INT8与FP16.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q10",
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q11",
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q12",
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q13",
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q14",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q15",
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q16",
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q17",
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q18",
+          "top1": "db-03-增量写入与索引刷新.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        }
+      ]
+    },
+    {
+      "dtype": "int8",
+      "model": "bge-small-zh-v1.5",
+      "loadMs": 92,
+      "embedMs": 654,
+      "chunks": 47,
+      "docs": 12,
+      "throughput": 71.87,
+      "hybrid": {
+        "recallAt5": 1,
+        "ndcgAt10": 0.959,
+        "mrr": 0.9444
+      },
+      "vectorOnly": {
+        "recallAt5": 1,
+        "ndcgAt10": 0.9795,
+        "mrr": 0.9722
+      },
+      "dbMedianMs": 7,
+      "detail": [
+        {
+          "id": "q1",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q2",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q3",
+          "top1": "nilm-04-CUSUM与GLR.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q4",
+          "top1": "nilm-02-采集与采样率.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q5",
+          "top1": "nilm-05-负荷特征.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q6",
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q7",
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q8",
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q9",
+          "top1": "edge-03-模型量化INT8与FP16.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q10",
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q11",
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q12",
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q13",
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q14",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q15",
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q16",
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q17",
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q18",
+          "top1": "db-03-增量写入与索引刷新.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        }
+      ]
+    },
+    {
+      "dtype": "fp16",
+      "model": "bge-small-zh-v1.5",
+      "loadMs": 106,
+      "embedMs": 1800,
+      "chunks": 47,
+      "docs": 12,
+      "throughput": 26.11,
+      "hybrid": {
+        "recallAt5": 1,
+        "ndcgAt10": 0.959,
+        "mrr": 0.9444
+      },
+      "vectorOnly": {
+        "recallAt5": 1,
+        "ndcgAt10": 0.9795,
+        "mrr": 0.9722
+      },
+      "dbMedianMs": 7,
+      "detail": [
+        {
+          "id": "q1",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q2",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q3",
+          "top1": "nilm-04-CUSUM与GLR.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q4",
+          "top1": "nilm-02-采集与采样率.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q5",
+          "top1": "nilm-05-负荷特征.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q6",
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q7",
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q8",
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q9",
+          "top1": "edge-03-模型量化INT8与FP16.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q10",
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q11",
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q12",
+          "top1": "db-02-向量索引HNSW参数.md",
+          "recall": 1,
+          "ndcg": 0.6309297535714575,
+          "mrr": 0.5
+        },
+        {
+          "id": "q13",
+          "top1": "nilm-01-概念与边界.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q14",
+          "top1": "nilm-03-阈值法事件检测.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q15",
+          "top1": "edge-01-端侧推理的动机与代价.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q16",
+          "top1": "edge-02-WebGPU与WASM后端选择.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q17",
+          "top1": "db-01-seekdb混合检索.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        },
+        {
+          "id": "q18",
+          "top1": "db-03-增量写入与索引刷新.md",
+          "recall": 1,
+          "ndcg": 1,
+          "mrr": 1
+        }
+      ]
+    }
+  ]
+}
