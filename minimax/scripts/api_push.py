@@ -30,6 +30,26 @@ def api(method, url, token, data=None):
         return json.loads(r.read().decode())
 
 
+TEXT_SUFFIXES = {".py", ".md", ".yml", ".yaml", ".json", ".txt", ".toml", ".sh",
+                 ".diff", ".cfg", ".ini", ".example", ".gitattributes"}
+
+
+def read_blob_content(path: str) -> bytes:
+    """Read the file the way git would store it (LF line endings for text).
+
+    .gitattributes normalises text files to LF, but this script uploads raw
+    bytes through the API and therefore has to do the same, otherwise every
+    checkout on Linux shows the whole file as rewritten.
+    """
+    import os
+
+    raw = open(path, "rb").read()
+    suffix = os.path.splitext(path)[1] or os.path.basename(path)
+    if suffix in TEXT_SUFFIXES:
+        raw = raw.replace(b"\r\n", b"\n")
+    return raw
+
+
 def main():
     token, branch, msg_file = sys.argv[1], sys.argv[2], sys.argv[3]
     paths = sys.argv[4:]
@@ -42,7 +62,7 @@ def main():
 
     entries = []
     for path in paths:
-        raw = open(path, "rb").read()
+        raw = read_blob_content(path)
         sha = api("POST", f"{API}/git/blobs", token,
                   {"content": base64.b64encode(raw).decode(), "encoding": "base64"})["sha"]
         entries.append({"path": path.replace("\\", "/"), "mode": "100644",

@@ -170,8 +170,10 @@ jobs:
       - name: Git diff of the MiniMax change
         if: env.HAS_MINIMAX_KEY == 'true'
         run: |
-          git diff --stat
-          git diff > evidence/logs/minimax-change.diff
+          # scoped to the business project: this diff is exactly what the model
+          # changed, not incidental checkout/line-ending noise elsewhere
+          git diff --stat -- project
+          git diff -- project > evidence/logs/minimax-change.diff
           mkdir -p evidence/diff
           cp evidence/logs/minimax-change.diff evidence/diff/001-add-status-filter.diff
 
