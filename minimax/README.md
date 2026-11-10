@@ -55,3 +55,23 @@ minimax/
 > 修改前目标测试 5 项失败、回归 9 项通过；经本模块构建上下文并交由 MiniMax 修改后，
 > 全部 14 项测试通过；任务状态保存后重启 PowerContext 仍可召回。
 > 详见 [VERIFY-SAMPLE.md](VERIFY-SAMPLE.md)，完整操作步骤见 [RUNBOOK.md](RUNBOOK.md)。
+
+### 端到端验证状态（可复现）
+
+在 GitHub Actions 的干净 Ubuntu 环境（`ubuntu-latest` + Python 3.11）中，一次
+`sdd-demo` 流水线跑完全部环节并全部通过：
+
+| 环节 | 结果 |
+| --- | --- |
+| 依赖安装 / 模块单测 | ✅（`pyseekdb` 嵌入式 seekdb 可用，sddcontext 12 项单测通过） |
+| seekdb 导入 | ✅ spec_items=10 / code_symbols=19 / test_cases=14 |
+| 修改前测试 | ✅ 目标测试 5 失败、回归 9 通过（语义断言：必须是这个状态） |
+| 上下文构建 | ✅ 含规格条目、符号表、目标文件完整源码、测试清单 |
+| **MiniMax 实现** | ✅ `MiniMax-M3` 真实调用，仅修改 `project/src/todoapp/service.py`（+10/−5） |
+| 修改后测试 | ✅ 14 passed / 0 failed |
+| 状态保存 + 重启召回 | ✅ PowerContext 重启后上下文仍含任务状态 |
+| 规格更新传播 | ✅ 改规格 → 重新导入 → 上下文同步更新 |
+| 变更 diff 归档 | ✅ `evidence/diff/001-add-status-filter.diff`（仅业务工程范围） |
+
+复现方式：仓库 **Actions → sdd-demo → Run workflow**（需配置 `MINIMAX_API_KEY` secret），
+或本地按 [RUNBOOK.md](RUNBOOK.md) 执行 `bash scripts/run_demo.sh`。
