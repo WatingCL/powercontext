@@ -15,6 +15,9 @@
 | `snapshots/ui-02-brief.png` | Web UI 生成综述初稿后的页面 | 主要流程完整 |
 | `recall-eval.md` | 16 条标注查询的检索评测：关闭/开启同义扩展的命中率、MRR、逐条名次与失败案例 | 检索质量可量化 |
 | `recall-eval.json` | 同一份评测的机器可读结果（CI 里也会重新生成） | 可复现 |
+| `qoder-screenshots/01-uid.png` | Qoder「设置 → 个人资料 → 编辑」面板：账号 ID（UID）与绑定邮箱 | 站点归属核对 |
+| `qoder-screenshots/02-pc-py-qa.png` | Qoder 对话：解读 `pc.py` 如何以标准库 urllib 对接 PowerContext 的六个接口 | Qoder 开发可核对 |
+| `qoder-screenshots/03-memory-index-qa.png` | Qoder 对话：解读 SQLite 本地索引与 PowerContext 记忆的存储分工 | Qoder 开发可核对 |
 
 ## 怎么自己复现
 
