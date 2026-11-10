@@ -166,3 +166,144 @@ class TestLiteralCursor:
         assert fake.sql == "DELETE FROM t"
         cur.executemany("INSERT INTO t VALUES (%s)", [("x",), ("y'y",)])
         assert fake.sql == "INSERT INTO t VALUES ('y''y')"
+
+
+CANNED_RESPONSE = '''### FILE: project/src/todoapp/service.py
+```python
+"""Application services for todoapp.
+
+Implements SPEC-002 (see specs/SPEC-002-filtering.md) for query behaviour
+and coordinates the store.
+"""
+
+from __future__ import annotations
+
+import uuid
+from typing import List, Optional
+
+from .models import Task, STATUS_TODO, VALID_STATUSES
+from .storage import TaskStore
+
+
+class TaskService:
+    """Facade over a TaskStore (SPEC-002-A for list semantics)."""
+
+    def __init__(self, store: TaskStore):
+        self._store = store
+
+    def add_task(self, title: str, notes: str = "", priority: int = 2) -> Task:
+        if not title or not title.strip():
+            raise ValueError("title must not be empty")
+        if priority not in (1, 2, 3):
+            raise ValueError("priority must be 1, 2 or 3")
+        tasks = self._store.load()
+        task = Task(
+            id=uuid.uuid4().hex[:8],
+            title=title.strip(),
+            status=STATUS_TODO,
+            notes=notes,
+            priority=priority,
+        )
+        tasks.append(task)
+        self._store.save(tasks)
+        return task
+
+    def list_tasks(self, status: Optional[str] = None) -> List[Task]:
+        """Return tasks in creation order, optionally filtered by status."""
+        tasks = self._store.load()
+        if status is None:
+            return tasks
+        if status not in VALID_STATUSES:
+            raise ValueError(f"invalid status: {status}")
+        return [task for task in tasks if task.status == status]
+
+    def get_task(self, task_id: str) -> Task:
+        for task in self._store.load():
+            if task.id == task_id:
+                return task
+        raise KeyError(f"task not found: {task_id}")
+
+    def complete_task(self, task_id: str) -> Task:
+        tasks = self._store.load()
+        for task in tasks:
+            if task.id == task_id:
+                task.status = "done"
+                self._store.save(tasks)
+                return task
+        raise KeyError(f"task not found: {task_id}")
+
+    def delete_task(self, task_id: str) -> None:
+        tasks = self._store.load()
+        remaining = [t for t in tasks if t.id != task_id]
+        if len(remaining) == len(tasks):
+            raise KeyError(f"task not found: {task_id}")
+        self._store.save(remaining)
+```
+'''
+
+
+class TestImplementPipeline:
+    """The MiniMax -> parse -> apply -> test chain, exercised offline.
+
+    A canned response (what a correct model reply looks like) is fed through
+    the real parser and writer, then the business project's tests run on a
+    copy - proving the pipeline itself works even before an API call is made.
+    """
+
+    def test_apply_changes_rejects_paths_outside_project(self, tmp_path, cfg):
+        from sddcontext.agent import MiniMaxError, apply_changes
+
+        project = tmp_path / "project"
+        (project / "src").mkdir(parents=True)
+        bad_cfg = Config(project_dir=project, work_dir=tmp_path / "sdd",
+                         evidence_dir=tmp_path / "evidence", store_backend="sqlite")
+        with pytest.raises(MiniMaxError):
+            apply_changes(bad_cfg, [{"path": "../../etc/passwd", "content": "x"}],
+                          repo_root=tmp_path)
+
+    def test_canned_response_makes_target_tests_pass(self, tmp_path, monkeypatch):
+        import shutil
+        import subprocess
+
+        from sddcontext import agent as agent_module
+
+        repo = tmp_path / "repo"
+        project_copy = repo / "project"
+        shutil.copytree(PROJECT, project_copy)
+        run_cfg = Config(
+            project_dir=project_copy,
+            work_dir=tmp_path / "sdd",
+            evidence_dir=tmp_path / "evidence",
+            store_backend="sqlite",
+            minimax_api_key="offline-test-key",
+        )
+
+        before = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests/", "-q"],
+            cwd=project_copy, capture_output=True, text=True,
+        )
+        assert before.returncode == 1, "target tests must fail before the change"
+
+        monkeypatch.setattr(
+            agent_module.MiniMaxClient,
+            "chat",
+            lambda self, system, user, **kwargs: {
+                "text": CANNED_RESPONSE,
+                "usage": {"total_tokens": 1234},
+                "raw": {},
+                "model": "offline-canned",
+            },
+        )
+        record = agent_module.implement(
+            run_cfg, context_markdown="# offline test context", task_id="001",
+            repo_root=repo,
+        )
+        assert record.changed_files
+        assert record.model == "offline-canned"
+        assert (tmp_path / "evidence" / "minimax-records").is_dir()
+
+        after = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests/", "-q"],
+            cwd=project_copy, capture_output=True, text=True,
+        )
+        assert after.returncode == 0, after.stdout + after.stderr
