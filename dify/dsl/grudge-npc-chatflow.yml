@@ -1,0 +1,332 @@
+app:
+  description: 记仇的酒馆掌柜：NPC 通过 PowerContext 跨会话记住玩家的恶作剧与承诺，并在新会话中主动提旧账。
+  icon: 🍶
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: advanced-chat
+  name: 记仇的酒馆掌柜
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.26@bdf47cb41e9062bba00d26625d2a795c1874011d8ce64bff738c44b5a31787ea
+    version: null
+kind: app
+site:
+  chat_color_theme: null
+  chat_color_theme_inverted: false
+  copyright: null
+  custom_disclaimer: ''
+  default_language: zh-Hans
+  description: null
+  icon: 🍶
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  input_placeholder: null
+  privacy_policy: null
+  show_workflow_steps: true
+  title: 记仇的酒馆掌柜
+  use_icon_as_answer_icon: false
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - description: PowerContext Server 地址
+    id: 7c1d4e6a-9b2f-4a51-8c3d-2e6f0a1b9c01
+    name: PC_BASE_URL
+    selector:
+    - env
+    - PC_BASE_URL
+    value: http://127.0.0.1:8000
+    value_type: string
+  - description: PowerContext 演示作用域 ID（由 pc-server/smoke_test.py 创建）
+    id: 7c1d4e6a-9b2f-4a51-8c3d-2e6f0a1b9c02
+    name: PC_SCOPE_ID
+    selector:
+    - env
+    - PC_SCOPE_ID
+    value: scp_7drqgj5gfme0x6aj104mar8ebk
+    value_type: string
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 50
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        knowledge_file_size_limit: 15
+        single_chunk_attachment_limit: 10
+        skill_file_size_limit: 50
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: 客官里边请——先说清楚，上次那笔账我可还记着呢。
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - 掌柜的，来碗酒
+    - 上次的事是我不对，这坛酒算我赔你的
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: http-request
+      id: edge-start-search
+      source: start
+      sourceHandle: source
+      target: recall
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+      id: edge-search-llm
+      source: recall
+      sourceHandle: source
+      target: keeper
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: edge-llm-answer
+      source: keeper
+      sourceHandle: source
+      target: reply
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: answer
+        targetType: http-request
+      id: edge-answer-remember
+      source: reply
+      sourceHandle: source
+      target: remember
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables: []
+      height: 72
+      id: start
+      position:
+        x: 0
+        y: 0
+      positionAbsolute:
+        x: 0
+        y: 0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: '{"scope_id":"{{#env.PC_SCOPE_ID#}}","limit":20}'
+          type: json
+        desc: 从 PowerContext 检索该玩家的历史记忆
+        headers: Content-Type:application/json
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 100
+        selected: false
+        timeout:
+          connect: 10
+          max_connect_timeout: 30
+          max_read_timeout: 60
+          max_write_timeout: 60
+          read: 30
+          write: 30
+        title: 回忆检索
+        type: http-request
+        url: '{{#env.PC_BASE_URL#}}/v1/memory/entries/list'
+        variables: []
+      height: 168
+      id: recall
+      position:
+        x: 300
+        y: 0
+      positionAbsolute:
+        x: 300
+        y: 0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 掌柜人设 + 召回记忆生成回话
+        model:
+          completion_params:
+            temperature: 0.8
+          mode: chat
+          name: deepseek-v4-pro
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 9a2b3c4d-1e2f-4a5b-9c6d-7e8f0a1b2c01
+          role: system
+          text: '你是「吴掌柜」，望江酒馆的老板。性格：小气、记仇，顾客做过的每件坏事、许过的每个承诺你都记在小本本上，一有机会就翻旧账、阴阳怪气，但表面上仍开门做生意。
+
+            说话风格：口语化短句，市井掌柜口吻，讽刺但不骂人。
+
+            以下是从 PowerContext 记忆中检索到的与该顾客的过往交集（JSON，可能为空或无相关内容）：
+
+            {{#recall.body#}}
+
+            规则：
+
+            1. 若记忆中有与当前话题相关的恶作剧、欠款或承诺，必须在本轮回复中自然提及（翻旧账、讽刺、要求兑现均可）；
+
+            2. 若记忆为空或无相关内容，则按人设正常应答；
+
+            3. 回复控制在 80 字以内。'
+        - id: 9a2b3c4d-1e2f-4a5b-9c6d-7e8f0a1b2c02
+          role: user
+          text: '{{#sys.query#}}'
+        selected: false
+        title: 掌柜回话
+        type: llm
+        vision:
+          enabled: false
+      height: 115
+      id: keeper
+      position:
+        x: 600
+        y: 0
+      positionAbsolute:
+        x: 600
+        y: 0
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        answer: '{{#keeper.text#}}'
+        desc: ''
+        selected: false
+        title: 回复
+        type: answer
+        variables: []
+      height: 101
+      id: reply
+      position:
+        x: 900
+        y: 0
+      positionAbsolute:
+        x: 900
+        y: 0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: '{"scope_id": "{{#env.PC_SCOPE_ID#}}", "kind": "fact", "text": "顾客说：{{#sys.query#}}",
+            "reason": "记录本轮互动供后续翻旧账"}'
+          type: json
+        desc: 把本轮玩家发言写入 PowerContext 记忆
+        headers: Content-Type:application/json
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 100
+        selected: false
+        timeout:
+          connect: 10
+          max_connect_timeout: 30
+          max_read_timeout: 60
+          max_write_timeout: 60
+          read: 30
+          write: 30
+        title: 记忆写回
+        type: http-request
+        url: '{{#env.PC_BASE_URL#}}/v1/memory/remember'
+        variables: []
+      height: 168
+      id: remember
+      position:
+        x: 1200
+        y: 0
+      positionAbsolute:
+        x: 1200
+        y: 0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
+  rag_pipeline_variables: []

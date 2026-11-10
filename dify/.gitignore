@@ -1,0 +1,10 @@
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+# local env with real credentials
+.env
+# powercontext local state
+home/
+*.db
