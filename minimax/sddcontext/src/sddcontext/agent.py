@@ -73,6 +73,24 @@ class MiniMaxError(RuntimeError):
     pass
 
 
+def _DIRECT_OPENER():
+    """An opener that ignores ``http_proxy``/``https_proxy`` (direct dial)."""
+    from urllib.request import ProxyHandler, build_opener
+
+    return build_opener(ProxyHandler({}))
+
+
+# base_resp.status_code values that mean "this model name is unusable, try the
+# next candidate" rather than "the request/account is broken".
+MODEL_UNAVAILABLE_CODES = {2013, 2069}
+# Account-level problems: retrying another model cannot help.
+FATAL_CODES = {
+    1002: "rate limited by MiniMax",
+    1004: "invalid MINIMAX_API_KEY (authentication failed)",
+    1008: "MiniMax account has insufficient balance - top up or use a funded key",
+}
+
+
 class MiniMaxClient:
     def __init__(self, cfg: Config):
         if not cfg.minimax_api_key:
@@ -83,11 +101,68 @@ class MiniMaxClient:
 
     def chat(self, system: str, user: str, temperature: float = 0.2,
              max_tokens: int = 8192) -> Dict[str, Any]:
-        from urllib.request import Request, urlopen
-        from urllib.error import HTTPError
+        """Call MiniMax, negotiating the model name when a name is retired.
+
+        Returns ``{"text", "usage", "raw", "model"}`` where ``model`` is the
+        model that actually answered.
+        """
+        attempts: List[str] = []
+        for model in self.cfg.minimax_model_candidates:
+            try:
+                return self._chat_with_model(
+                    model, system, user, temperature, max_tokens
+                )
+            except _ModelUnavailable as error:
+                attempts.append(f"{model}: {error}")
+                continue
+            except MiniMaxError:
+                raise
+        raise MiniMaxError(
+            "no usable MiniMax model available for this account; tried: "
+            + " | ".join(attempts)
+        )
+
+    def _chat_with_model(self, model: str, system: str, user: str,
+                         temperature: float, max_tokens: int) -> Dict[str, Any]:
+        data = self._post(model, system, user, temperature, max_tokens)
+
+        base_resp = data.get("base_resp") or {}
+        status_code = base_resp.get("status_code")
+        status_msg = base_resp.get("status_msg") or ""
+        if status_code not in (None, 0):
+            if status_code in MODEL_UNAVAILABLE_CODES:
+                raise _ModelUnavailable(f"code {status_code}: {status_msg}")
+            if status_code in FATAL_CODES:
+                raise MiniMaxError(
+                    f"MiniMax code {status_code}: {FATAL_CODES[status_code]}"
+                    f" (server said: {status_msg})"
+                )
+            raise MiniMaxError(f"MiniMax code {status_code}: {status_msg}")
+
+        try:
+            text = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError) as error:
+            raise MiniMaxError(f"unexpected MiniMax response: {json.dumps(data)[:1000]}") from error
+        return {
+            "text": text,
+            "usage": data.get("usage", {}),
+            "raw": data,
+            "model": model,
+        }
+
+    def _post(self, model: str, system: str, user: str,
+              temperature: float, max_tokens: int) -> Dict[str, Any]:
+        """POST to the chat API.
+
+        Tries the environment-configured proxy first (the API is reachable
+        directly from mainland China but may need a proxy elsewhere), and
+        retries without any proxy when the connection itself fails.
+        """
+        from urllib.error import HTTPError, URLError
+        from urllib.request import Request, build_opener
 
         payload = {
-            "model": self.cfg.minimax_model,
+            "model": model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -95,26 +170,31 @@ class MiniMaxClient:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        request = Request(
-            f"{self.cfg.minimax_base_url.rstrip('/')}/text/chatcompletion_v2",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.cfg.minimax_api_key}",
-            },
-            method="POST",
-        )
-        try:
-            with urlopen(request, timeout=300) as response:
-                data = json.loads(response.read().decode("utf-8"))
-        except HTTPError as error:
-            detail = error.read().decode("utf-8", errors="replace")[:1000]
-            raise MiniMaxError(f"MiniMax API HTTP {error.code}: {detail}") from error
-        try:
-            text = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError) as error:
-            raise MiniMaxError(f"unexpected MiniMax response: {json.dumps(data)[:1000]}") from error
-        return {"text": text, "usage": data.get("usage", {}), "raw": data}
+        url = f"{self.cfg.minimax_base_url.rstrip('/')}/text/chatcompletion_v2"
+        body = json.dumps(payload).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.cfg.minimax_api_key}",
+        }
+
+        last_error: Optional[Exception] = None
+        for use_proxy in (True, False):
+            opener = build_opener() if use_proxy else _DIRECT_OPENER()
+            request = Request(url, data=body, headers=headers, method="POST")
+            try:
+                with opener.open(request, timeout=600) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except HTTPError as error:
+                detail = error.read().decode("utf-8", errors="replace")[:1000]
+                raise MiniMaxError(f"MiniMax API HTTP {error.code}: {detail}") from error
+            except (URLError, OSError) as error:
+                last_error = error
+                continue
+        raise MiniMaxError(f"MiniMax API unreachable: {last_error}")
+
+
+class _ModelUnavailable(MiniMaxError):
+    """Model name not offered to this account - try the next candidate."""
 
 
 def parse_file_blocks(response_text: str) -> List[Dict[str, str]]:
@@ -173,10 +253,11 @@ def implement(cfg: Config, context_markdown: str, task_id: str,
             f"response head: {result['text'][:500]}"
         )
     written = apply_changes(cfg, blocks, repo_root)
+    used_model = result.get("model") or cfg.minimax_model
 
     record = MiniMaxRecord(
         task_id=task_id,
-        model=cfg.minimax_model,
+        model=used_model,
         prompt_context=context_markdown,
         response_text=result["text"],
         usage=result.get("usage", {}),
@@ -199,7 +280,7 @@ def implement(cfg: Config, context_markdown: str, task_id: str,
                 metadata={
                     "origin": "sddcontext.implement",
                     "task_id": task_id,
-                    "model": cfg.minimax_model,
+                    "model": used_model,
                     "changed_files": record.changed_files,
                 },
             )

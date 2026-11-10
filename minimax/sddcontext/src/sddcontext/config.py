@@ -10,11 +10,23 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List
 
 
 def _env(key: str, default: str) -> str:
     value = os.environ.get(key, "").strip()
     return value or default
+
+
+# Tried in order after MINIMAX_MODEL: MiniMax retires model names over time
+# ("code 2069: model no longer available"), so the implement step negotiates
+# instead of failing on a hard-coded name.
+MINIMAX_MODEL_FALLBACKS = (
+    "MiniMax-M2",
+    "MiniMax-M2.1",
+    "MiniMax-M1",
+    "MiniMax-Text-01",
+)
 
 
 @dataclass
@@ -46,6 +58,18 @@ class Config:
     )
     minimax_api_key: str = field(default_factory=lambda: _env("MINIMAX_API_KEY", ""))
     minimax_model: str = field(default_factory=lambda: _env("MINIMAX_MODEL", "MiniMax-M2"))
+
+    @property
+    def minimax_model_candidates(self) -> List[str]:
+        """``MINIMAX_MODEL`` first, then the built-in fallbacks, de-duplicated."""
+        ordered = [self.minimax_model, *MINIMAX_MODEL_FALLBACKS]
+        seen: set = set()
+        candidates: List[str] = []
+        for name in ordered:
+            if name and name not in seen:
+                seen.add(name)
+                candidates.append(name)
+        return candidates
 
     # Evidence artefacts (logs, records, diffs)
     evidence_dir: Path = field(default_factory=lambda: Path(_env("SDD_EVIDENCE_DIR", "evidence")))

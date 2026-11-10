@@ -114,6 +114,22 @@ cd project && python -m pytest tests/ -v
 4. 模型若返回不可解析的输出格式，`implement` 会报错并保留原始响应以便排查；
 5. `sdd verify` 的日志统计基于 pytest `-v` 输出解析，只支持常规 `PASSED/FAILED/ERROR` 行格式。
 
+### 6.1 MiniMax 报错对照表
+
+`implement` 会依次尝试 `MINIMAX_MODEL` 与内置候选（`MiniMax-M2` → `MiniMax-M2.1`
+→ `MiniMax-M1` → `MiniMax-Text-01`），因此平台下线某个模型名不会让流程直接失败。
+常见错误码含义：
+
+| 错误码 | 含义 | 处理方式 |
+|---|---|---|
+| `1008` insufficient balance | 账户余额为空（`sk-api-` 开头的是**按量计费**密钥，从余额扣费） | 在开放平台「账户管理 → 余额与账单」充值；或改用已订阅套餐的 `sk-cp-` 开头密钥 |
+| `1004` | 密钥无效/鉴权失败 | 重新创建接口密钥并同步更新 `MINIMAX_API_KEY` |
+| `2069` / `2013` | 模型名对该账号不可用（模型已下线或名称错误） | 无需处理，程序会自动尝试下一个候选；也可显式设置 `MINIMAX_MODEL` |
+| `1002` | 触发频率限制 | 稍后重试 |
+
+注意：MiniMax 存在两类密钥——`sk-api-`（余额计费）与 `sk-cp-`（Coding Plan 套餐）。
+用 `sk-api-` 密钥调用而账户无余额时即报 `1008`，与代码无关。
+
 ## 7. 重置方法
 
 ```bash
