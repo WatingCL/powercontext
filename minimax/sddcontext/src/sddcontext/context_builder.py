@@ -15,6 +15,7 @@ Given a task file, the builder:
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -31,6 +32,50 @@ def _exists(cfg: Config, rel_path: str) -> bool:
         return (cfg.project_dir / rel_path).exists()
     except OSError:
         return False
+
+
+PY_PATH_RE = re.compile(r"([\w./-]+\.py)")
+
+
+def _target_sources(cfg: Config, task: "TaskInfo", project_prefix: str,
+                    max_files: int = 4, max_bytes: int = 20000) -> List[Dict[str, str]]:
+    """Full current source of the files the task says must be modified.
+
+    Symbol lists alone are not enough: given only signatures, a model tends to
+    rewrite a module from scratch and break its existing structure. Embedding
+    the real file content keeps the change minimal and reviewable.
+    """
+    seen: set = set()
+    sources: List[Dict[str, str]] = []
+    project_name = cfg.project_dir.name
+    for raw in PY_PATH_RE.findall(task.change_targets or ""):
+        rel = raw.lstrip("./")
+        candidates = []
+        parts = rel.split("/", 1)
+        if len(parts) == 2 and parts[0] == project_name:
+            candidates.append(cfg.project_dir / parts[1])
+        candidates.append(cfg.project_dir / rel)
+        for candidate in candidates:
+            if not candidate.is_file():
+                continue
+            key = candidate.resolve()
+            if key in seen:
+                break
+            seen.add(key)
+            try:
+                text = candidate.read_text(encoding="utf-8")
+            except OSError:
+                break
+            if len(text) > max_bytes:
+                text = text[:max_bytes] + "\n# ...（内容过长，已截断）"
+            sources.append({
+                "path": f"{project_prefix}/{candidate.relative_to(cfg.project_dir).as_posix()}",
+                "content": text,
+            })
+            break
+        if len(sources) >= max_files:
+            break
+    return sources
 
 
 def build_context(cfg: Config, store: BaseStore, task_path: Path,
@@ -97,6 +142,7 @@ def build_context(cfg: Config, store: BaseStore, task_path: Path,
             }
             for t in tests
         ],
+        "target_files": _target_sources(cfg, task, project_prefix),
         "task_state": task_state,
         "state_source": "powercontext" if task_state is not None else None,
         "state_error": state_error,
@@ -151,6 +197,16 @@ def render_markdown(context: Dict[str, Any]) -> str:
     else:
         lines.append("（未检索到相关符号）")
     lines.append("")
+
+    target_files = context.get("target_files") or []
+    if target_files:
+        lines.append("## 目标文件当前内容（完整源码，请在此基础上做最小修改）")
+        for item in target_files:
+            lines.append(f"### {item['path']}")
+            lines.append("```python")
+            lines.append(item["content"].rstrip("\n"))
+            lines.append("```")
+            lines.append("")
 
     lines.append("## 验证测试")
     if context["tests"]:

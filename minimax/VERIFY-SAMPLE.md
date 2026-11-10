@@ -80,3 +80,46 @@ bash scripts/reset.sh
 - **状态复用**：第 7-9 步跨越了 PowerContext 进程重启与模块进程重启（CLI 每次调用都是新进程）；
 - **MiniMax 参与**：`evidence/minimax-records/` 中的 prompt_context 与第 3 步上下文一致，
   changed_files 与代码 diff 对应。
+
+## 7. 实际运行结果（2026-11-10 实测，Windows + sqlite 冒烟后端 + 真实 MiniMax 调用）
+
+本节记录一次**真实执行**的结果（非设计预期），与上面各步一一对应。seekdb 相关步骤在
+GitHub Actions 的 Ubuntu 环境执行（见 `.github/workflows/sdd-demo.yml` 运行记录）。
+
+| 步骤 | 实际输出 |
+| --- | --- |
+| `sdd import` | `spec_items: 10` / `code_symbols: 19` / `test_cases: 14` |
+| `sdd verify --label pre` | `exit=1 passed=9 failed=5`（目标测试 5 项全部因 `TypeError: unexpected keyword argument 'status'` 失败） |
+| `sdd context` | 目标规格 SPEC-002-B/C 排在最前；`TaskService.list_tasks` 为第一条代码符号；目标/回归测试全部命中；上下文含"目标文件当前内容"（完整源码） |
+| `sdd implement` | `model=MiniMax-M3`，真实 HTTP 调用，usage：prompt 2527 / completion 546 / total 3073 tokens，修改 `project/src/todoapp/service.py` |
+| `sdd verify --label post` | `exit=0 passed=14 failed=0` |
+| `sdd state save` | 写入 PowerContext Memory（返回 citation，`_snapshots: 3`） |
+| 重启 PowerContext 后 `sdd state show` | 完整召回 `done`/`todo`/`verification`/`model`/`changed_files` |
+| 重启后 `sdd context` | "任务状态（来自 PowerContext）"章节含上述字段 |
+
+MiniMax 实际产出的代码差异（`evidence/diff/001-add-status-filter.diff`，10 增 5 删）：
+
+```diff
+-from typing import List
++from typing import List, Optional
+ 
+-from .models import Task, STATUS_TODO
++from .models import Task, STATUS_TODO, VALID_STATUSES
+ 
+-    def list_tasks(self) -> List[Task]:
+-        """Return all tasks in creation order (SPEC-002-A)."""
+-        return self._store.load()
++    def list_tasks(self, status: Optional[str] = None) -> List[Task]:
++        """Return tasks in creation order, optionally filtered by status."""
++        if status is not None and status not in VALID_STATUSES:
++            raise ValueError(f"invalid status: {status}")
++        tasks = self._store.load()
++        if status is None:
++            return tasks
++        return [task for task in tasks if task.status == status]
+```
+
+> 说明：这是模型在**只有符号签名**的早期上下文下无法做到的结果——第一版上下文不含目标文件源码时，
+> 模型倾向于整篇重写该模块。为让上下文真正可用，`context_builder` 现在会把任务"需要修改的位置"
+> 所指文件的**完整当前源码**注入上下文（`## 目标文件当前内容` 章节），系统提示词同时要求最小改动、
+> 保留原有结构与签名。上述 diff 即为改进后的真实产出。

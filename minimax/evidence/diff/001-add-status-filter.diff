@@ -1,0 +1,34 @@
+diff --git a/minimax/project/src/todoapp/service.py b/minimax/project/src/todoapp/service.py
+index d1b3f31..9b418e9 100644
+--- a/minimax/project/src/todoapp/service.py
++++ b/minimax/project/src/todoapp/service.py
+@@ -7,9 +7,9 @@ and coordinates the store.
+ from __future__ import annotations
+ 
+ import uuid
+-from typing import List
++from typing import List, Optional
+ 
+-from .models import Task, STATUS_TODO
++from .models import Task, STATUS_TODO, VALID_STATUSES
+ from .storage import TaskStore
+ 
+ 
+@@ -36,9 +36,14 @@ class TaskService:
+         self._store.save(tasks)
+         return task
+ 
+-    def list_tasks(self) -> List[Task]:
+-        """Return all tasks in creation order (SPEC-002-A)."""
+-        return self._store.load()
++    def list_tasks(self, status: Optional[str] = None) -> List[Task]:
++        """Return tasks in creation order, optionally filtered by status."""
++        if status is not None and status not in VALID_STATUSES:
++            raise ValueError(f"invalid status: {status}")
++        tasks = self._store.load()
++        if status is None:
++            return tasks
++        return [task for task in tasks if task.status == status]
+ 
+     def get_task(self, task_id: str) -> Task:
+         for task in self._store.load():

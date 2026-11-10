@@ -35,7 +35,7 @@ set -a; . ./.env; set +a
 
 - `MINIMAX_API_KEY`（必填，implement 步骤需要）——在 https://platform.minimaxi.com 「接口密钥」创建；
 - `SDD_STORE_BACKEND`：`seekdb`（默认，嵌入式）/ `mysql` / `sqlite`（仅开发冒烟）；
-- `MINIMAX_MODEL`：默认 `MiniMax-M2`，按你账号可用模型调整（如 `MiniMax-Text-01`）。
+- `MINIMAX_MODEL`：默认 `MiniMax-M3`（当前免费试用档，不扣余额）；程序会在该模型不可用时自动依次尝试 `MiniMax-M2.7 → M2.5 → M2 → M1 → Text-01`。
 
 ### 1.3 备选：seekdb server / OceanBase（MySQL 协议后端）
 
@@ -116,8 +116,8 @@ cd project && python -m pytest tests/ -v
 
 ### 6.1 MiniMax 报错对照表
 
-`implement` 会依次尝试 `MINIMAX_MODEL` 与内置候选（`MiniMax-M2` → `MiniMax-M2.1`
-→ `MiniMax-M1` → `MiniMax-Text-01`），因此平台下线某个模型名不会让流程直接失败。
+`implement` 会依次尝试 `MINIMAX_MODEL` 与内置候选（`MiniMax-M3` → `MiniMax-M2.7` → `MiniMax-M2.5`
+→ `MiniMax-M2` → `MiniMax-M1` → `MiniMax-Text-01`），因此平台下线某个模型名不会让流程直接失败。
 常见错误码含义：
 
 | 错误码 | 含义 | 处理方式 |

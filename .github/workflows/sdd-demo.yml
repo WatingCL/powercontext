@@ -6,7 +6,7 @@ name: sdd-demo
 # Required repository secret (Settings > Secrets and variables > Actions):
 #   MINIMAX_API_KEY - MiniMax platform API key (https://platform.minimaxi.com)
 # Optional secret:
-#   MINIMAX_MODEL   - model name, defaults to MiniMax-M2
+#   MINIMAX_MODEL   - model name, defaults to MiniMax-M3
 
 on:
   push:
@@ -24,7 +24,7 @@ env:
   SDD_SEEKDB_PATH: .sdd/seekdb
   POWERCONTEXT_URL: http://127.0.0.1:8000
   MINIMAX_BASE_URL: https://api.minimaxi.com/v1
-  MINIMAX_MODEL: ${{ secrets.MINIMAX_MODEL || 'MiniMax-M2' }}
+  MINIMAX_MODEL: ${{ secrets.MINIMAX_MODEL || 'MiniMax-M3' }}
   HAS_MINIMAX_KEY: ${{ secrets.MINIMAX_API_KEY != '' }}
 
 jobs:

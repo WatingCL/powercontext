@@ -9,7 +9,7 @@
 | --- | --- |
 | 接入方式 | HTTP API（原生 `POST {MINIMAX_BASE_URL}/text/chatcompletion_v2`，Bearer 鉴权） |
 | 端点 | `https://api.minimaxi.com/v1`（`MINIMAX_BASE_URL` 可配置） |
-| 模型 | `MiniMax-M2`（`MINIMAX_MODEL` 可配置） |
+| 模型 | `MiniMax-M3`（`MINIMAX_MODEL` 可配置；M3 为推理模型，本模块发送 `thinking: {"type": "disabled"}` 关闭思考，否则推理 token 会吃光输出预算导致内容为空） |
 | 参与环节 | 任务 001 的代码修改：接收上下文模块组装的开发上下文，产出 `project/src/todoapp/service.py` 的修改 |
 
 **记录流程**（`sddcontext/agent.py`）：
@@ -22,6 +22,24 @@
    `evidence/minimax-records/001-*.json`，并作为 Source 证据写入 PowerContext。
 
 实际运行记录见 `evidence/minimax-records/`；代码差异见 `evidence/diff/`。
+
+### 1.1 真实调用记录（2026-11-10）
+
+| 项 | 值 |
+| --- | --- |
+| 调用时间 | 2026-11-10T13:35:19Z |
+| 模型 | `MiniMax-M3`（响应 `base_resp.status_code = 0`） |
+| token 用量 | prompt 2527 / completion 546 / total 3073 |
+| 上下文规模 | 6757 字符（含规格条目、符号表、目标文件完整源码、测试清单、任务状态） |
+| 响应 | 2314 字符，含 `### FILE: project/src/todoapp/service.py` 代码块 |
+| 落盘证据 | `evidence/minimax-records/001-2026-11-10T133519+0000.json`、`evidence/diff/001-add-status-filter.diff`、`evidence/logs/post-20261110T133526Z.log` |
+| 效果 | 修改前 `5 failed / 9 passed` → 修改后 `14 passed` |
+
+> 模型名协商：`implement` 会依次尝试 `MINIMAX_MODEL` 与内置候选
+> （`MiniMax-M3 → M2.7 → M2.5 → M2 → M1 → Text-01`），平台下线某个模型名（错误码 2069/2013）
+> 时会自动切换到下一个，因此不会因模型改名而失败。`1008`（余额不足）、`1004`（鉴权失败）
+> 会立即给出可操作的报错。
+
 
 ## 2. 数据库查询记录（seekdb / OceanBase）
 

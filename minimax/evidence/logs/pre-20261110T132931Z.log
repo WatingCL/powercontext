@@ -1,0 +1,95 @@
+command: C:\Users\Lenovo\.workbuddy\binaries\python\versions\3.13.12\python.exe -m pytest tests/ -v
+exit_code: 1
+commit: dd2e87c
+time: 2026-11-10T13:29:31.174842+00:00
+----------------------------------------------------------------------
+============================= test session starts =============================
+platform win32 -- Python 3.13.14, pytest-9.2.0, pluggy-1.7.0 -- C:\Users\Lenovo\.workbuddy\binaries\python\versions\3.13.12\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Lenovo\WorkBuddy\2026-11-09-22-49-58\powercontext\minimax\project
+configfile: pyproject.toml
+plugins: anyio-4.16.0, platformdirs-4.14.5
+collecting ... collected 14 items
+
+tests/test_filtering.py::test_filter_by_status_todo FAILED               [  7%]
+tests/test_filtering.py::test_filter_by_status_done FAILED               [ 14%]
+tests/test_filtering.py::test_filter_default_returns_all FAILED          [ 21%]
+tests/test_filtering.py::test_filter_invalid_status_raises_value_error FAILED [ 28%]
+tests/test_filtering.py::test_filter_invalid_status_does_not_modify_storage FAILED [ 35%]
+tests/test_service.py::test_add_task_returns_created_task PASSED         [ 42%]
+tests/test_service.py::test_add_task_rejects_empty_title PASSED          [ 50%]
+tests/test_service.py::test_add_task_rejects_invalid_priority PASSED     [ 57%]
+tests/test_service.py::test_list_tasks_returns_all_in_creation_order PASSED [ 64%]
+tests/test_service.py::test_complete_task_changes_status PASSED          [ 71%]
+tests/test_service.py::test_delete_task_removes_it PASSED                [ 78%]
+tests/test_service.py::test_unknown_task_id_raises PASSED                [ 85%]
+tests/test_service.py::test_persistence_roundtrip_keeps_format PASSED    [ 92%]
+tests/test_service.py::test_load_missing_file_returns_empty PASSED       [100%]
+
+================================== FAILURES ===================================
+_________________________ test_filter_by_status_todo __________________________
+
+seeded = (Task(id='f850bf25', title='buy milk', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.483146+00:...='a1c03f6b', title='ship release', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.518441+00:00'))
+service = <todoapp.service.TaskService object at 0x000001A1D1AF4050>
+
+    def test_filter_by_status_todo(seeded, service):
+        a, b, c = seeded
+>       result = service.list_tasks(status="todo")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: TaskService.list_tasks() got an unexpected keyword argument 'status'
+
+tests\test_filtering.py:33: TypeError
+_________________________ test_filter_by_status_done __________________________
+
+seeded = (Task(id='34ce378c', title='buy milk', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.676043+00:...='df5e83ef', title='ship release', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.696861+00:00'))
+service = <todoapp.service.TaskService object at 0x000001A1D1CA3D90>
+
+    def test_filter_by_status_done(seeded, service):
+        a, b, c = seeded
+>       result = service.list_tasks(status="done")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: TaskService.list_tasks() got an unexpected keyword argument 'status'
+
+tests\test_filtering.py:39: TypeError
+_______________________ test_filter_default_returns_all _______________________
+
+seeded = (Task(id='121d97e4', title='buy milk', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.721763+00:...='b43b61db', title='ship release', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.741507+00:00'))
+service = <todoapp.service.TaskService object at 0x000001A1D1B607D0>
+
+    def test_filter_default_returns_all(seeded, service):
+        a, b, c = seeded
+>       result = service.list_tasks(status=None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: TaskService.list_tasks() got an unexpected keyword argument 'status'
+
+tests\test_filtering.py:45: TypeError
+________________ test_filter_invalid_status_raises_value_error ________________
+
+seeded = (Task(id='106dff6f', title='buy milk', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.764970+00:...='4c180d2f', title='ship release', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.786370+00:00'))
+service = <todoapp.service.TaskService object at 0x000001A1D1BDE650>
+
+    def test_filter_invalid_status_raises_value_error(seeded, service):
+        with pytest.raises(ValueError):
+>           service.list_tasks(status="bogus")
+E           TypeError: TaskService.list_tasks() got an unexpected keyword argument 'status'
+
+tests\test_filtering.py:51: TypeError
+_____________ test_filter_invalid_status_does_not_modify_storage ______________
+
+seeded = (Task(id='ce9af76c', title='buy milk', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.810149+00:...='3717dd25', title='ship release', status='todo', notes='', priority=2, created_at='2026-11-10T13:29:30.830431+00:00'))
+service = <todoapp.service.TaskService object at 0x000001A1D1BDDBA0>
+
+    def test_filter_invalid_status_does_not_modify_storage(seeded, service):
+        before = service.list_tasks()
+        with pytest.raises(ValueError):
+>           service.list_tasks(status="finished?")
+E           TypeError: TaskService.list_tasks() got an unexpected keyword argument 'status'
+
+tests\test_filtering.py:57: TypeError
+=========================== short test summary info ===========================
+FAILED tests/test_filtering.py::test_filter_by_status_todo - TypeError: TaskS...
+FAILED tests/test_filtering.py::test_filter_by_status_done - TypeError: TaskS...
+FAILED tests/test_filtering.py::test_filter_default_returns_all - TypeError: ...
+FAILED tests/test_filtering.py::test_filter_invalid_status_raises_value_error
+FAILED tests/test_filtering.py::test_filter_invalid_status_does_not_modify_storage
+========================= 5 failed, 9 passed in 0.84s =========================

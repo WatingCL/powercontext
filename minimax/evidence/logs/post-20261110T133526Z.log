@@ -1,0 +1,29 @@
+command: C:\Users\Lenovo\.workbuddy\binaries\python\versions\3.13.12\python.exe -m pytest tests/ -v
+exit_code: 0
+commit: dd2e87c
+time: 2026-11-10T13:35:26.938774+00:00
+----------------------------------------------------------------------
+============================= test session starts =============================
+platform win32 -- Python 3.13.14, pytest-9.2.0, pluggy-1.7.0 -- C:\Users\Lenovo\.workbuddy\binaries\python\versions\3.13.12\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Lenovo\WorkBuddy\2026-11-09-22-49-58\powercontext\minimax\project
+configfile: pyproject.toml
+plugins: anyio-4.16.0, platformdirs-4.14.5
+collecting ... collected 14 items
+
+tests/test_filtering.py::test_filter_by_status_todo PASSED               [  7%]
+tests/test_filtering.py::test_filter_by_status_done PASSED               [ 14%]
+tests/test_filtering.py::test_filter_default_returns_all PASSED          [ 21%]
+tests/test_filtering.py::test_filter_invalid_status_raises_value_error PASSED [ 28%]
+tests/test_filtering.py::test_filter_invalid_status_does_not_modify_storage PASSED [ 35%]
+tests/test_service.py::test_add_task_returns_created_task PASSED         [ 42%]
+tests/test_service.py::test_add_task_rejects_empty_title PASSED          [ 50%]
+tests/test_service.py::test_add_task_rejects_invalid_priority PASSED     [ 57%]
+tests/test_service.py::test_list_tasks_returns_all_in_creation_order PASSED [ 64%]
+tests/test_service.py::test_complete_task_changes_status PASSED          [ 71%]
+tests/test_service.py::test_delete_task_removes_it PASSED                [ 78%]
+tests/test_service.py::test_unknown_task_id_raises PASSED                [ 85%]
+tests/test_service.py::test_persistence_roundtrip_keeps_format PASSED    [ 92%]
+tests/test_service.py::test_load_missing_file_returns_empty PASSED       [100%]
+
+============================= 14 passed in 0.61s ==============================

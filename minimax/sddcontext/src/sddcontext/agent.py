@@ -30,12 +30,20 @@ FILE_MARKER_RE = re.compile(r"###\s*FILE:\s*(\S+)")
 CODE_BLOCK_RE = re.compile(r"```[a-zA-Z0-9_+-]*\n(.*?)```", re.S)
 
 SYSTEM_PROMPT = """你是一名严谨的 Python 工程师。你会收到一份“开发上下文”，包含任务目标、适用规格条目、
-相关代码符号和验证测试。请完成代码修改，并严格遵守：
+相关代码符号、目标文件的当前完整源码和验证测试。请完成代码修改，并严格遵守：
 
 1. 只修改任务要求涉及的文件，输出每个被修改文件的完整新内容；
 2. 完全满足“适用规格条目”中列出的要求；
 3. 不得破坏“必须保持的行为”，回归测试必须继续通过；
 4. 不修改任何测试文件。
+
+修改原则（非常重要）：
+
+- 在“目标文件当前内容”的基础上做**最小必要修改**，保留原有的模块文档字符串、导入、类名、
+  `__init__` 签名、方法签名（除任务要求新增的参数外）和整体结构；
+- 不得改变现有的构造方式、依赖注入方式、存储调用方式，不得引入新的持久化实现或新的字段；
+- 不得添加任务未要求的额外功能（例如新增时间戳字段、改写存储格式等）；
+- 只输出确实需要的文件，不要输出未修改的文件。
 
 输出格式（不要输出其他解释性文字）：
 
@@ -100,7 +108,7 @@ class MiniMaxClient:
         self.cfg = cfg
 
     def chat(self, system: str, user: str, temperature: float = 0.2,
-             max_tokens: int = 8192) -> Dict[str, Any]:
+             max_tokens: int = 16384) -> Dict[str, Any]:
         """Call MiniMax, negotiating the model name when a name is retired.
 
         Returns ``{"text", "usage", "raw", "model"}`` where ``model`` is the
@@ -143,6 +151,14 @@ class MiniMaxClient:
             text = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError) as error:
             raise MiniMaxError(f"unexpected MiniMax response: {json.dumps(data)[:1000]}") from error
+        if not (text or "").strip():
+            finish = (data.get("choices") or [{}])[0].get("finish_reason")
+            usage = data.get("usage") or {}
+            raise MiniMaxError(
+                f"MiniMax returned empty content (finish_reason={finish}, "
+                f"completion_tokens={usage.get('completion_tokens')}); "
+                "raise MINIMAX_MAX_TOKENS or keep thinking disabled"
+            )
         return {
             "text": text,
             "usage": data.get("usage", {}),
@@ -167,9 +183,18 @@ class MiniMaxClient:
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_completion_tokens": max_tokens,
         }
+        # MiniMax-M3 thinks adaptively by default and its reasoning tokens are
+        # billed against the output budget, which can leave `content` empty
+        # (finish_reason=length). The implement step wants the answer, not the
+        # trace, so thinking is disabled for M3-family models only - older
+        # models reject the parameter.
+        if model.upper().startswith("MINIMAX-M3"):
+            payload["thinking"] = {"type": "disabled"}
+            payload["reasoning_split"] = True
+        else:
+            payload["temperature"] = temperature
         url = f"{self.cfg.minimax_base_url.rstrip('/')}/text/chatcompletion_v2"
         body = json.dumps(payload).encode("utf-8")
         headers = {
@@ -213,10 +238,38 @@ def parse_file_blocks(response_text: str) -> List[Dict[str, str]]:
     return results
 
 
+def _resolve_target(cfg: Config, repo_root: Path, raw_path: str) -> Path:
+    """Resolve a model-supplied path to a file inside the business project.
+
+    Models answer with paths relative to whatever the context showed them, so
+    several shapes must be accepted: ``project/src/x.py`` (context-relative),
+    ``minimax/project/src/x.py`` (repo-relative) and ``src/x.py``
+    (project-relative). Anything resolving outside the project is rejected.
+    """
+    rel = raw_path.replace("\\", "/").lstrip("/")
+    project_root = cfg.project_dir.resolve()
+    candidates = [repo_root / rel, cfg.project_dir.parent / rel,
+                  cfg.project_dir / rel]
+    if rel.startswith("minimax/"):
+        stripped = rel[len("minimax/"):]
+        candidates.extend([repo_root / stripped, cfg.project_dir.parent / stripped])
+    for candidate in candidates:
+        try:
+            target = candidate.resolve()
+        except OSError:
+            continue
+        if project_root == target or project_root in target.parents:
+            if target.exists():
+                return target
+    raise MiniMaxError(
+        f"model returned a path outside the business project or unknown file: {raw_path}"
+    )
+
+
 def apply_changes(cfg: Config, blocks: List[Dict[str, str]], repo_root: Path) -> List[Path]:
     """Write returned file contents back, after safety checks.
 
-    Paths are resolved against the repo root and must stay inside it.
+    Paths are resolved against the project dir and must stay inside it.
     Originals are snapshotted to ``evidence/snapshots/`` first.
     """
     snapshot_dir = cfg.evidence_dir / "snapshots"
@@ -224,16 +277,8 @@ def apply_changes(cfg: Config, blocks: List[Dict[str, str]], repo_root: Path) ->
     written: List[Path] = []
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for block in blocks:
-        rel = block["path"].replace("\\", "/").lstrip("/")
-        # normalise "minimax/project/..." and "project/..." to project-relative
-        if rel.startswith("minimax/"):
-            rel = rel[len("minimax/"):]
-        target = (repo_root / rel).resolve()
-        project_root = cfg.project_dir.resolve()
-        if project_root not in target.parents:
-            raise MiniMaxError(f"refusing to write outside project dir: {block['path']}")
-        if not target.exists():
-            raise MiniMaxError(f"model returned unknown file: {block['path']}")
+        target = _resolve_target(cfg, repo_root, block["path"])
+        rel = target.relative_to(cfg.project_dir.resolve()).as_posix()
         backup = snapshot_dir / f"{stamp}_{rel.replace('/', '__')}"
         backup.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
         target.write_text(block["content"], encoding="utf-8")
@@ -246,14 +291,8 @@ def implement(cfg: Config, context_markdown: str, task_id: str,
     """Run the MiniMax implementation step end to end."""
     client = MiniMaxClient(cfg)
     result = client.chat(SYSTEM_PROMPT, context_markdown)
-    blocks = parse_file_blocks(result["text"])
-    if not blocks:
-        raise MiniMaxError(
-            "model response contained no parsable '### FILE:' blocks; "
-            f"response head: {result['text'][:500]}"
-        )
-    written = apply_changes(cfg, blocks, repo_root)
     used_model = result.get("model") or cfg.minimax_model
+    blocks = parse_file_blocks(result["text"])
 
     record = MiniMaxRecord(
         task_id=task_id,
@@ -261,16 +300,23 @@ def implement(cfg: Config, context_markdown: str, task_id: str,
         prompt_context=context_markdown,
         response_text=result["text"],
         usage=result.get("usage", {}),
-        changed_files=[str(w) for w in written],
+        changed_files=[],
         created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
     )
-    cfg.evidence_dir.mkdir(parents=True, exist_ok=True)
-    record_dir = cfg.evidence_dir / "minimax-records"
-    record_dir.mkdir(parents=True, exist_ok=True)
-    record_path = record_dir / f"{task_id}-{record.created_at.replace(':', '')}.json"
-    record_path.write_text(
-        json.dumps(record.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    try:
+        if not blocks:
+            raise MiniMaxError(
+                "model response contained no parsable '### FILE:' blocks; "
+                f"response head: {result['text'][:500]}"
+            )
+        written = apply_changes(cfg, blocks, repo_root)
+    except MiniMaxError:
+        # keep the raw response for diagnosis even when applying it failed
+        _write_record(cfg, record, suffix="-failed")
+        raise
+
+    record.changed_files = [str(w) for w in written]
+    record_path = _write_record(cfg, record)
 
     if pc is not None:
         try:
@@ -288,3 +334,15 @@ def implement(cfg: Config, context_markdown: str, task_id: str,
             # evidence is already on disk; PowerContext capture is best-effort
             pass
     return record
+
+
+def _write_record(cfg: Config, record: "MiniMaxRecord", suffix: str = "") -> Path:
+    cfg.evidence_dir.mkdir(parents=True, exist_ok=True)
+    record_dir = cfg.evidence_dir / "minimax-records"
+    record_dir.mkdir(parents=True, exist_ok=True)
+    stamp = record.created_at.replace(":", "") if record.created_at else "unknown"
+    record_path = record_dir / f"{record.task_id}-{stamp}{suffix}.json"
+    record_path.write_text(
+        json.dumps(record.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return record_path

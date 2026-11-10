@@ -20,10 +20,13 @@ def _env(key: str, default: str) -> str:
 
 # Tried in order after MINIMAX_MODEL: MiniMax retires model names over time
 # ("code 2069: model no longer available"), so the implement step negotiates
-# instead of failing on a hard-coded name.
+# instead of failing on a hard-coded name. MiniMax-M3 currently runs on the
+# free trial tier, the rest are paid fallbacks.
 MINIMAX_MODEL_FALLBACKS = (
+    "MiniMax-M3",
+    "MiniMax-M2.7",
+    "MiniMax-M2.5",
     "MiniMax-M2",
-    "MiniMax-M2.1",
     "MiniMax-M1",
     "MiniMax-Text-01",
 )
@@ -57,7 +60,7 @@ class Config:
         default_factory=lambda: _env("MINIMAX_BASE_URL", "https://api.minimaxi.com/v1")
     )
     minimax_api_key: str = field(default_factory=lambda: _env("MINIMAX_API_KEY", ""))
-    minimax_model: str = field(default_factory=lambda: _env("MINIMAX_MODEL", "MiniMax-M2"))
+    minimax_model: str = field(default_factory=lambda: _env("MINIMAX_MODEL", "MiniMax-M3"))
 
     @property
     def minimax_model_candidates(self) -> List[str]:
