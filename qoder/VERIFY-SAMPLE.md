@@ -288,4 +288,5 @@ OK
 | 6 | 出稿引用可追溯 | 初稿每条论断带 `[paper_id]`，共 6 段原文 | ✅ |
 | 7 | 服务重启后记忆仍在 | 重启 `powercontext server run` 后 `resume` 输出不变 | ✅ |
 | 8 | 同义扩展救回字面漏召回 | `search 维特比解码 --no-expand` 空 / 默认命中 `p-zeifman11` | ✅ 16 条查询未命中率 19% → 0 |
-| 9 | 干净环境可从零复现 | GitHub Actions `qoder-litcontext-verify` 全绿 | ✅ [工作流页面](https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml)，分支头连续三次推送均 success |
+| 9 | 干净环境可从零复现 | GitHub Actions `qoder-litcontext-verify` 全绿 | ✅ [工作流页面](https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml)，分支头连续多次推送均 success |
+| 10 | 线上站点未登录可访问 | 无痕窗口打开 <https://litcontext-tr1zylcd1ih.qoder.website> | ✅ HTTP 200，`assets/` 两张截图资源均 200 |

@@ -2,6 +2,8 @@
 
 [![qoder-litcontext-verify](https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml/badge.svg?branch=2026-competition-ecosystem)](https://github.com/WatingCL/powercontext/actions/workflows/qoder-verify.yml)
 
+**在线站点（Qoder Sites 发布，未登录可访问）**：<https://litcontext-tr1zylcd1ih.qoder.website>
+
 > 面向科研新手的文献上下文助手：把「读到哪、得出什么结论、为什么否掉某条路线」留在数据库里，
 > 而不是留在上一次的聊天记录和你自己的脑子里。
 
