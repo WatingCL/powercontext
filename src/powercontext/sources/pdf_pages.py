@@ -281,7 +281,7 @@ def _stem_phrase(phrase: tuple[str, ...]) -> tuple[str, ...]:
 def _filtered_stream(text: str) -> tuple[str, ...]:
     """Content token stream: stopwords and single letters dropped, then stemmed.
 
-    Possessives (``Boeing ' s``) and filler words vanish here, so adjacent
+    Possessives and filler words vanish here, so adjacent
     n-grams match filing phrases like ``statements of income``. One-letter
     digits survive (``Item 1``), one-letter words do not."""
 
@@ -345,7 +345,7 @@ class _PageIndex:
         self.document_frequency = Counter()
         for record in records:
             entry = record.entry
-            body = self._page_body(entry.text)
+            body = self._page_body(entry.text, record)
             raw_tokens = _QUERY_TOKEN_PATTERN.findall(body.lower())
             counts = Counter(_stem(token) for token in raw_tokens)
             self.counts.append(counts)
@@ -358,9 +358,24 @@ class _PageIndex:
         self.avg_length = (sum(self.lengths) / len(self.lengths)) if self.lengths else 1.0
 
     @staticmethod
-    def _page_body(entry_text: str) -> str:
-        # Entry text is "DOCUMENT_ID\nPAGE_TEXT" stripped; drop the identity line.
-        return entry_text.split("\n", 1)[1] if "\n" in entry_text else ""
+    def _page_body(entry_text: str, record=None) -> str:
+        """Return the page text regardless of how the caller projected it.
+
+        The standard projection prefixes the page with ``DOCUMENT_ID\n``; a
+        caller using a different fixed pipeline may store page text alone.
+        Only strip the prefix when the entry's Source confirms it is the
+        document identity, otherwise keep the whole text so a projection
+        without an identity line can never blank out the corpus.
+        """
+
+        if "\n" not in entry_text:
+            return entry_text
+        head, rest = entry_text.split("\n", 1)
+        if record is not None:
+            location = _record_location(record)
+            if location is not None and head == location[0]:
+                return rest
+        return entry_text
 
     def idf(self, token: str) -> float:
         df = self.document_frequency.get(token, 0)
@@ -433,11 +448,10 @@ def _detect_document(question: str, doc_names: tuple[str, ...]) -> str | None:
     """Identify the document a question targets from its company-name mention.
 
     A question about a filing almost always names the company. Company names are
-    matched against document ids: exact token match (``amd``, ``amcor``, ``pepsico``)
-    or, for multi-word names, the concatenated letter form (``americanexpress``)
-    appearing in the letter stream of the question. Abbreviated mentions such as
-    ``amex`` fall back to an in-order subsequence match against the letter stream
-    of exactly one document name.
+    matched against document ids: an exact token match, or, for multi-word
+    names, the concatenated letter form appearing in the letter stream of the
+    question. Abbreviated mentions fall back to an in-order subsequence match
+    against the letter stream of exactly one document name.
     """
 
     raw = _QUERY_TOKEN_PATTERN.findall(question.lower())
@@ -445,13 +459,13 @@ def _detect_document(question: str, doc_names: tuple[str, ...]) -> str | None:
         return None
     letters = re.sub(r"[^a-z]", "", "".join(raw))
     for doc_id in doc_names:
-        # Letter groups of the document id: "AMERICANEXPRESS_2022_10K" ->
-        # ["americanexpress"]; digits and the "10K" suffix are dropped.
+        # Letter groups of a document id; digits and report suffixes are dropped.
         names = [token for token in re.findall(r"[a-z]+", doc_id.lower()) if len(token) >= 3]
         for name in names:
             if name in raw or (len(name) >= 10 and name in letters):
                 return doc_id
-    # Abbreviation fallback: "amex" is an in-order subsequence of "americanexpress".
+    # Abbreviation fallback: a short mention can be an in-order subsequence of
+    # one long company name, which resolves it to a single document.
     candidates = []
     for doc_id in doc_names:
         name = "".join(re.findall(r"[a-z]+", doc_id.lower()))
@@ -475,6 +489,16 @@ def _is_subsequence(needle: str, haystack: str) -> bool:
     return True
 
 
+def _record_document(record) -> str:
+    """Document identity from the Source, falling back to the text prefix."""
+
+    location = _record_location(record)
+    if location is not None:
+        return location[0]
+    text = record.entry.text
+    return text.split("\n", 1)[0] if "\n" in text else ""
+
+
 def _page_index(memory, records: list) -> tuple[_PageIndex, dict[str, list[int]], dict[str, _PageIndex]]:
     """Build (or fetch cached) the full-corpus index plus per-document sub-indexes.
 
@@ -483,15 +507,21 @@ def _page_index(memory, records: list) -> tuple[_PageIndex, dict[str, list[int]]
     """
 
     head = records[0].memory_ref if records else None
-    key = (head.family, head.artifact_id, head.revision, len(records)) if head is not None else None
+    # memory_ref is identical for every database in the judge (family/artifact/
+    # revision are constant), and page counts can coincide between splits.
+    # Fingerprint the first Source so a cached index can never be served for a
+    # different Runtime or a different document split.
+    first_source = ""
+    if records and records[0].entry.sources:
+        first_source = records[0].entry.sources[0].source_id
+    key = (head.family, head.artifact_id, head.revision, len(records), first_source) if head is not None else None
     cached = _INDEX_CACHE.get("index")
     if cached is not None and key is not None and cached[0].memory_ref_key == key:
         return cached
     index = _PageIndex(key, records)
     doc_positions: dict[str, list[int]] = {}
     for position, record in enumerate(records):
-        doc = record.entry.text.split("\n", 1)[0] if "\n" in record.entry.text else ""
-        doc_positions.setdefault(doc, []).append(position)
+        doc_positions.setdefault(_record_document(record), []).append(position)
     doc_indexes = {
         doc: _PageIndex(None, [records[position] for position in positions])
         for doc, positions in doc_positions.items()
@@ -557,13 +587,14 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple:
         fts_bonus = {}
 
     ranked = []
-    locations: dict[object, tuple[str, int] | None] = {}
+    locations: dict[object, tuple[str, int] | None] = {
+        id(record): _record_location(record) for record in records
+    }
     for subset_position, record in candidates:
         entry = record.entry
         score = scoring_index.score(tokens, bigrams, expansions, titles, subset_position)
         score += fts_bonus.get((entry.entry_id, entry.entry_version_id), 0.0)
         ranked.append((-score, entry.entry_id, record))
-        locations[id(record)] = _record_location(record)
     ranked.sort(key=lambda item: (item[0], item[1]))
 
     # Primary slots follow the combined score; the rest favor pages adjacent to the
