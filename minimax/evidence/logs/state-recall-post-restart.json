@@ -1,0 +1,21 @@
+{
+  "changed_files": [
+    "project/src/todoapp/service.py"
+  ],
+  "done": [
+    "导入规格/代码/测试到 seekdb",
+    "构建开发上下文",
+    "MiniMax 完成代码修改",
+    "功能与回归测试全部通过"
+  ],
+  "model": "MiniMax-M3",
+  "title": "为任务列表增加状态筛选",
+  "todo": [
+    "更新运行文档中的验证样例章节"
+  ],
+  "verification": {
+    "post": "全部 14 passed",
+    "pre": "目标测试 5 failed / 回归 9 passed"
+  },
+  "_snapshots": 1
+}

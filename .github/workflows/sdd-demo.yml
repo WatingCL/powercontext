@@ -45,7 +45,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pyseekdb "powercontext[cli,server]==1.2.0"
+          # 1.4.0 is the release the mirror bundles; the client also reads the
+          # 1.2.x response layout (state-compat job covers both).
+          pip install pytest pyseekdb "powercontext[cli,server]==1.4.0"
           # sanity: embedded seekdb engine importable
           python - <<'EOF'
           import pylibseekdb
@@ -138,16 +140,35 @@ jobs:
       - name: Restart PowerContext server and recall state
         if: env.HAS_MINIMAX_KEY == 'true'
         run: |
+          # Mirror the reviewer path exactly: drop the local scope mirror and
+          # restart the server on the same data directory, so recall can only
+          # come from PowerContext's own durable storage.
           kill "$(cat powercontext.pid)" || true
           sleep 3
+          rm -f .sdd/scope_id.txt
           powercontext server run >> powercontext.log 2>&1 &
           echo $! > powercontext.pid
           for i in $(seq 1 60); do
             curl --fail --silent http://127.0.0.1:8000/health/live > /dev/null && break
             sleep 2
           done
-          echo "--- state after restart ---"
-          python -m sddcontext state show --task project/tasks/001-add-status-filter.md
+          echo "--- state after restart (no local scope cache) ---"
+          python -m sddcontext state show --task project/tasks/001-add-status-filter.md \
+            | tee evidence/logs/state-recall-post-restart.json
+          grep -q '"done"' evidence/logs/state-recall-post-restart.json
+          python - <<'EOF'
+          from pathlib import Path
+          from sddcontext.state import PowerContextClient
+
+          client = PowerContextClient("http://127.0.0.1:8000", Path(".sdd"))
+          scope_id = client.ensure_scope()
+          by_search = client._search_state(scope_id, "SDD-TASK-STATE 001", "001")
+          by_prepare = client._prepare_state(scope_id, "001")
+          assert by_search, "Memory search channel lost the state"
+          assert by_prepare, "PreparedContext envelope fallback lost the state"
+          print(f"[state] search channel: {by_search['done']}")
+          print(f"[state] prepare channel: {by_prepare['done']}")
+          EOF
           echo "--- context includes recalled state ---"
           python -m sddcontext context --task project/tasks/001-add-status-filter.md \
             --out md --save .sdd/context-001-post.json | tee evidence/logs/context-001-post.md
@@ -186,3 +207,86 @@ jobs:
             minimax/evidence/**
             minimax/powercontext.log
           if-no-files-found: warn
+
+  # The state dimension must not depend on one server release. This job runs the
+  # reviewer's exact path - save, drop the local scope mirror, restart the server
+  # on the same data directory, recall - against every PowerContext release the
+  # module claims to support. No MiniMax call, no seekdb install: fast gate.
+  state-compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        powercontext: ["1.2.0", "1.4.0", "1.5.1"]
+    defaults:
+      run:
+        shell: bash
+        working-directory: minimax
+    env:
+      SDD_STORE_BACKEND: sqlite
+      SDD_SEEKDB_PATH: .sdd/state-compat.db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PowerContext ${{ matrix.powercontext }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install "powercontext[cli,server]==${{ matrix.powercontext }}"
+          powercontext --version
+
+      - name: Start PowerContext
+        env:
+          POWERCONTEXT_HOME: ${{ github.workspace }}/minimax/.pc-home-${{ matrix.powercontext }}
+        run: |
+          mkdir -p "$POWERCONTEXT_HOME"
+          powercontext server run > pc-compat.log 2>&1 &
+          echo $! > pc-compat.pid
+          for i in $(seq 1 60); do
+            curl --fail --silent http://127.0.0.1:8000/health/live > /dev/null && exit 0
+            sleep 2
+          done
+          cat pc-compat.log; exit 1
+
+      - name: Save state, drop scope mirror, restart, recall
+        env:
+          POWERCONTEXT_HOME: ${{ github.workspace }}/minimax/.pc-home-${{ matrix.powercontext }}
+          PYTHONPATH: sddcontext/src
+          # 1.2.x predates the PreparedContext envelope; 1.4+ must pass both channels.
+          EXPECT_PREPARE: ${{ matrix.powercontext != '1.2.0' }}
+        run: |
+          python -m sddcontext state save \
+            --task project/tasks/001-add-status-filter.md \
+            --json '{"done":["compat check"],"todo":[],"verification":{"post":"14 passed"}}'
+          rm -f .sdd/scope_id.txt
+          kill "$(cat pc-compat.pid)" || true
+          sleep 3
+          powercontext server run >> pc-compat.log 2>&1 &
+          echo $! > pc-compat.pid
+          for i in $(seq 1 60); do
+            curl --fail --silent http://127.0.0.1:8000/health/live > /dev/null && break
+            sleep 2
+          done
+          python -m sddcontext state show \
+            --task project/tasks/001-add-status-filter.md | tee "state-compat-${{ matrix.powercontext }}.json"
+          grep -q '"done"' "state-compat-${{ matrix.powercontext }}.json"
+          python - <<'EOF'
+          import os
+          from pathlib import Path
+          from sddcontext.state import PowerContextClient
+
+          client = PowerContextClient("http://127.0.0.1:8000", Path(".sdd"))
+          scope_id = client.scope_candidates()[0]
+          print("scope:", scope_id)
+          by_search = client._search_state(scope_id, "SDD-TASK-STATE 001", "001")
+          by_prepare = client._prepare_state(scope_id, "001")
+          print("search channel:", by_search)
+          print("prepare channel:", by_prepare)
+          assert by_search, "Memory search channel lost the state"
+          if os.environ.get("EXPECT_PREPARE", "true").lower() == "true":
+              assert by_prepare, "PreparedContext envelope fallback lost the state"
+          EOF

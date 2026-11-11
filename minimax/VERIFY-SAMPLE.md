@@ -43,8 +43,8 @@ MiniMax 执行、seekdb 提供资料检索、PowerContext 保存任务状态。
 | 4 | `sdd implement --task project/tasks/001-add-status-filter.md` | 修改 `project/src/todoapp/service.py`；交互记录（模型、完整上下文、响应、usage）落 `evidence/minimax-records/001-*.json` |
 | 5 | `sdd verify --label post` | 退出码 0：**14 passed**（目标 5 + 回归 9）；日志落 `evidence/logs/post-*.log` |
 | 6 | `sdd state save --task ... --json '{...}'` | 状态写入 PowerContext Memory，返回 citation |
-| 7 | 重启 PowerContext：kill 后 `powercontext server run &` | 服务恢复，数据仍在（持久化存储） |
-| 8 | `sdd state show --task ...` | 输出第 6 步保存的状态（跨重启复用） |
+| 7 | 删掉本地 scope 镜像 `.sdd/scope_id.txt`，再 kill PowerContext 并用**同一数据目录**重启 | 服务恢复，数据仍在（持久化存储）；本地已无任何 scope 线索 |
+| 8 | `sdd state show --task ...` | 退出码 0，输出第 6 步保存的状态（只可能来自服务端持久化） |
 | 9 | `sdd context --task ...` | 上下文"任务状态"段包含第 6 步的内容（状态用于后续上下文构建） |
 | 10 | 修改 `project/specs/SPEC-002-filtering.md` 中 SPEC-002-B 的任意内容 → `sdd import` → `sdd context --task ...` | 上下文输出**更新后的**规格内容（非固定答案） |
 
@@ -60,6 +60,7 @@ MiniMax 执行、seekdb 提供资料检索、PowerContext 保存任务状态。
 | 代码差异 | `evidence/diff/001-add-status-filter.diff`（CI 生成）/ 或 `git diff` |
 | 修改前代码快照 | `evidence/snapshots/` |
 | 前后上下文 JSON | `.sdd/context-001-pre.json` / `.sdd/context-001-post.json` |
+| 删缓存 + 重启服务后的状态召回输出 | `evidence/logs/state-recall-post-restart.json` |
 
 ## 5. 重置方法
 
@@ -77,7 +78,10 @@ bash scripts/reset.sh
   可直接与 `project/specs/` 比对；第 10 步证明输出跟随导入内容更新；
 - **数据库实际参与**：`sdd import` 后可直接查库（如 `pyseekdb` SQL 控制台或 MySQL 客户端）
   核对三张表内容；上下文检索词与命中结果在输出的头部元信息中可见；
-- **状态复用**：第 7-9 步跨越了 PowerContext 进程重启与模块进程重启（CLI 每次调用都是新进程）；
+- **状态复用**：第 7-9 步跨越了 PowerContext 进程重启与模块进程重启（CLI 每次调用都是新进程），
+  且第 7 步先删除了 `.sdd/scope_id.txt`——召回只能来自 `POST /v1/memory/search`
+  （1.4+ 的正文在 `hits[].memory.text`）或 `POST /v1/context/prepare` 的信封解析，
+  两者都不会因为缓存缺失而失忆；
 - **MiniMax 参与**：`evidence/minimax-records/` 中的 prompt_context 与第 3 步上下文一致，
   changed_files 与代码 diff 对应。
 
@@ -94,7 +98,7 @@ GitHub Actions 的 Ubuntu 环境执行（见 `.github/workflows/sdd-demo.yml` �
 | `sdd implement` | `model=MiniMax-M3`，真实 HTTP 调用，usage：prompt 2527 / completion 546 / total 3073 tokens，修改 `project/src/todoapp/service.py` |
 | `sdd verify --label post` | `exit=0 passed=14 failed=0` |
 | `sdd state save` | 写入 PowerContext Memory（返回 citation，`_snapshots: 3`） |
-| 重启 PowerContext 后 `sdd state show` | 完整召回 `done`/`todo`/`verification`/`model`/`changed_files` |
+| 删除 `.sdd/scope_id.txt` + 重启 PowerContext 后 `sdd state show` | 退出码 0，完整召回 `done`/`todo`/`verification`；PowerContext 1.4.0 / 1.5.1 实测，1.2.0 由 CI `state-compat` 覆盖 |
 | 重启后 `sdd context` | "任务状态（来自 PowerContext）"章节含上述字段 |
 
 MiniMax 实际产出的代码差异（`evidence/diff/001-add-status-filter.diff`，10 增 5 删）：

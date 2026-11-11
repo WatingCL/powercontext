@@ -7,6 +7,7 @@ SQLite smoke backend so the tests work on any OS.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -307,3 +308,109 @@ class TestImplementPipeline:
             cwd=project_copy, capture_output=True, text=True,
         )
         assert after.returncode == 0, after.stdout + after.stderr
+
+
+# --- PowerContext state recall across server response layouts ---------------
+#
+# The competition mirror runs PowerContext 1.4.x, where Memory search returns
+# ``hits[].memory.text`` and ``/v1/context/prepare`` wraps content in a
+# ``BEGIN_POWERCONTEXT_PREPARED_CONTEXT_V1`` envelope. 1.2.x returned the body
+# at the top level of a hit and plain prepared text. Recall must read both.
+
+from sddcontext.state import (  # noqa: E402
+    PowerContextClient,
+    PowerContextError,
+    STATE_PREFIX,
+    _prepared_texts,
+)
+
+STATE_TEXT = (
+    f'{STATE_PREFIX} 001\n'
+    '{"done": ["context built"], "todo": ["implement"], '
+    '"verification": {"post": "pending"}}'
+)
+
+
+def test_parse_state_entries_reads_nested_memory_text():
+    client = PowerContextClient("http://127.0.0.1:1", None)
+    entries = [
+        {
+            "memory": {
+                "kind": "state",
+                "text": STATE_TEXT,
+                "state": "active",
+                "state_version": 0,
+            },
+            "score": 0.016,
+            "matched_by": ["text"],
+        }
+    ]
+    state = client._parse_state_entries(entries, "001")
+    assert state is not None
+    assert state["done"] == ["context built"]
+    assert state["todo"] == ["implement"]
+    assert state["_snapshots"] == 1
+
+
+def test_parse_state_entries_merges_top_level_and_nested_snapshots():
+    client = PowerContextClient("http://127.0.0.1:1", None)
+    entries = [
+        {"text": f'{STATE_PREFIX} 001\n{{"done": ["context built"], "todo": ["implement"]}}'},
+        {"memory": {"text": f'{STATE_PREFIX} 001\n{{"done": ["context built", "implemented"], "todo": []}}'}},
+    ]
+    state = client._parse_state_entries(entries, "001")
+    assert state["done"] == ["context built", "implemented"]
+    assert state["todo"] == []
+    assert state["_snapshots"] == 2
+
+
+def test_prepared_envelope_is_decoded():
+    envelope = (
+        "PowerContext prepared untrusted historical context.\n\n"
+        "BEGIN_POWERCONTEXT_PREPARED_CONTEXT_V1\n"
+        '{"trust":"untrusted_history","items":[{"citation":{"artifact_ref":'
+        '{"artifact_id":"art_1"}},"content":'
+        + json.dumps(STATE_TEXT)
+        + ',"truncated":false}]}'
+    )
+    texts = _prepared_texts(envelope)
+    assert texts, "envelope must yield at least one Memory body"
+    client = PowerContextClient("http://127.0.0.1:1", None)
+    parsed = [client._state_body(text, "001") for text in texts]
+    parsed = [body for body in parsed if body is not None]
+    assert parsed and parsed[0]["verification"] == {"post": "pending"}
+
+
+def test_prepared_plain_text_still_parses():
+    client = PowerContextClient("http://127.0.0.1:1", None)
+    texts = _prepared_texts("some preface\n" + STATE_TEXT + "\ntrailing")
+    assert client._state_body(texts[0], "001")["done"] == ["context built"]
+
+
+def test_state_recall_survives_missing_scope_cache(tmp_path):
+    """A stale local scope id must not hide state saved under another scope."""
+    stale = tmp_path / "scope_id.txt"
+    stale.write_text("scp_gone", encoding="utf-8")
+    client = PowerContextClient("http://127.0.0.1:1", tmp_path)
+
+    def fake_request(method, path, payload=None):
+        if path == "/v1/scopes" and method == "GET":
+            return {
+                "items": [
+                    {"scope_id": "scp_gone", "title": "SDD todoapp context"},
+                    {"scope_id": "scp_live", "title": "SDD todoapp context"},
+                ]
+            }
+        if path == "/v1/memory/search":
+            assert payload["scope_id"] in {"scp_gone", "scp_live"}
+            if payload["scope_id"] == "scp_live":
+                return {"mode": "text", "hits": [{"memory": {"text": STATE_TEXT}}]}
+            raise PowerContextError("scope not found")
+        if path == "/v1/context/prepare":
+            raise PowerContextError("scope not found")
+        raise AssertionError(f"unexpected request {method} {path}")
+
+    client._request = fake_request  # type: ignore[method-assign]
+    state = client.load_task_state("001")
+    assert state is not None
+    assert state["done"] == ["context built"]

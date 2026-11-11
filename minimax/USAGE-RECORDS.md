@@ -86,7 +86,7 @@ SELECT * FROM sdd_spec_items WHERE title LIKE '%状态%' OR content LIKE '%statu
 | OS（验证环境） | Ubuntu（GitHub Actions `ubuntu-latest`） |
 | Python | 3.11 |
 | pyseekdb / seekdb | pip 最新版 |
-| powercontext | pip 最新版（1.2.0 兼容） |
+| powercontext | `==1.4.0`（1.2.0 / 1.5.1 亦通过 `state-compat` 矩阵） |
 | pytest | ≥7 |
 | sddcontext | 0.1.0（本仓库） |
 

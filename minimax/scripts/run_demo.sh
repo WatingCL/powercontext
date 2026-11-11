@@ -46,7 +46,10 @@ python -m sddcontext state save --task "$SDD_PROJECT_DIR/tasks/001-add-status-fi
   "changed_files": ["project/src/todoapp/service.py"]
 }'
 
-step "7. recall state (fresh module process = module restart)"
+step "7. recall state after dropping the local scope mirror (server-side only)"
+# .sdd/scope_id.txt is a cache, not a prerequisite: remove it so recall can only
+# come from PowerContext's durable storage.
+rm -f .sdd/scope_id.txt
 python -m sddcontext state show --task "$SDD_PROJECT_DIR/tasks/001-add-status-filter.md"
 
 step "8. context now includes recalled state"

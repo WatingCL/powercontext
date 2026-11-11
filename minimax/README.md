@@ -49,6 +49,22 @@ minimax/
 | **PowerContext** | 任务状态库 | 任务进展（已完成/待办/验证结果）以 Memory（kind=state）持久化；模块重启、PowerContext 重启后仍可召回并注入后续上下文；MiniMax 交互与验证结果另存为 Source 证据 |
 | **MiniMax** | 开发助手 | 接收完整开发上下文（规格+代码+测试+状态），产出代码修改（chatcompletion_v2 接口）；全程交互记录留档 `evidence/minimax-records/` |
 
+### 状态召回与服务器版本兼容
+
+任务状态是**服务端持久化**的，客户端不依赖本地缓存：
+
+1. 写入：`POST /v1/memory/remember`（`kind=state`，正文形如 `SDD-TASK-STATE 001\n{...}`）；
+2. 召回先走 `POST /v1/memory/search`：不同版本把正文放在 `hits[].text`（1.2.x）或
+   `hits[].memory.text`（1.4.x/1.5.x），客户端按结构逐层取正文，不写死布局；
+3. 检索无结果时回退 `POST /v1/context/prepare`：1.4+ 的正文被包在
+   `BEGIN_POWERCONTEXT_PREPARED_CONTEXT_V1{...}` 信封里且 JSON 被二次转义，
+   客户端先解信封再解转义，取 `items[].content` 解析状态体；
+4. `.sdd/scope_id.txt` 只是加速缓存：`POST /v1/scopes` 以 `idempotency_key` 幂等，
+   缓存丢失会重新解析到同一 scope；缓存指向已失效 scope 时，从 `GET /v1/scopes`
+   按项目标题找回真实 scope 再检索；
+5. 因此「保存 → 换进程 → 重启服务 → 再次构建上下文」这条链在 1.2.0 / 1.4.0 / 1.5.1
+   上都成立，CI 的 `state-compat` 任务逐版本断言这一点。
+
 ### 验证样例一句话版
 
 > 任务 001 要求 `TaskService.list_tasks` 支持状态筛选（规格 SPEC-002-B/C）。
@@ -63,13 +79,14 @@ minimax/
 
 | 环节 | 结果 |
 | --- | --- |
-| 依赖安装 / 模块单测 | ✅（`pyseekdb` 嵌入式 seekdb 可用，sddcontext 12 项单测通过） |
+| 依赖安装 / 模块单测 | ✅（`pyseekdb` 嵌入式 seekdb 可用，sddcontext 17 项单测通过） |
 | seekdb 导入 | ✅ spec_items=10 / code_symbols=19 / test_cases=14 |
 | 修改前测试 | ✅ 目标测试 5 失败、回归 9 通过（语义断言：必须是这个状态） |
 | 上下文构建 | ✅ 含规格条目、符号表、目标文件完整源码、测试清单 |
 | **MiniMax 实现** | ✅ `MiniMax-M3` 真实调用，仅修改 `project/src/todoapp/service.py`（+10/−5） |
 | 修改后测试 | ✅ 14 passed / 0 failed |
-| 状态保存 + 重启召回 | ✅ PowerContext 重启后上下文仍含任务状态 |
+| 状态保存 + 重启召回 | ✅ 删除 `.sdd/scope_id.txt` + kill 重启 PowerContext（同一数据目录）后，`state show` 退出码 0，上下文仍含任务状态 |
+| 跨版本状态回归 | ✅ `state-compat` 矩阵在 PowerContext 1.2.0 / 1.4.0 / 1.5.1 上各跑一遍 save→丢缓存→重启→召回 |
 | 规格更新传播 | ✅ 改规格 → 重新导入 → 上下文同步更新 |
 | 变更 diff 归档 | ✅ `evidence/diff/001-add-status-filter.diff`（仅业务工程范围） |
 

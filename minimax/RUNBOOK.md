@@ -11,7 +11,7 @@ macOS/Windows 请使用 seekdb docker + MySQL 协议后端，见 §1.3 备选方
 ```bash
 cd minimax
 python -m pip install --upgrade pip
-pip install pytest pyseekdb "powercontext[cli,server]"
+pip install pytest pyseekdb "powercontext[cli,server]==1.4.0"
 ```
 
 版本参考（开发验证时使用）：
@@ -20,7 +20,7 @@ pip install pytest pyseekdb "powercontext[cli,server]"
 | --- | --- | --- |
 | Python | 3.11+ | sddcontext 要求 ≥3.10，pyseekdb 要求 ≥3.11 |
 | pyseekdb | 最新（pip） | OceanBase seekdb 嵌入式引擎 |
-| powercontext | 最新（pip，1.2.0 验证通过） | 含 `[cli,server]` extra |
+| powercontext | `==1.4.0`（另在 1.2.0 上回归验证） | 含 `[cli,server]` extra |
 | pytest | ≥7 | 测试运行器 |
 | sddcontext | 本仓库，零第三方依赖 | `PYTHONPATH=minimax/sddcontext/src` 或 `pip install -e minimax/sddcontext` |
 
@@ -75,7 +75,7 @@ sdd context --task <task.md> --out json --save ctx.json            # JSON 输出
 sdd implement --task project/tasks/001-add-status-filter.md        # MiniMax 完成代码修改
 sdd verify --label pre                       # 跑测试并留痕（pre/post 标签区分前后）
 sdd state save --task <task.md> --json '<JSON对象>'                # 任务状态存入 PowerContext
-sdd state show --task <task.md>              # 读取任务状态
+sdd state show --task <task.md>              # 读取任务状态（删除 .sdd/scope_id.txt 后仍可读）
 ```
 
 各命令输入/输出说明：
@@ -138,3 +138,7 @@ bash scripts/reset.sh    # 恢复代码、清空 seekdb 数据与模块状态目
 
 彻底重置（含 PowerContext 状态）：删除 PowerContext 数据目录后重启 server，
 并删除 `minimax/.sdd/`（其中缓存了 scope_id）。
+
+注意：`.sdd/scope_id.txt` 只是加速缓存，**不是召回前提**。`POST /v1/scopes` 以
+`idempotency_key` 幂等，删除缓存后会重新解析到同一个 scope；若缓存指向已不存在的
+scope，模块会从 `GET /v1/scopes` 中按项目标题找回真实 scope 再检索。
